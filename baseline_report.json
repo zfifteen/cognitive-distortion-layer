@@ -46,12 +46,76 @@
     }
   },
   "ablation_study": {
-    "raw_variance": 88677550100.25,
-    "normalized_variance": 690054449.3323802,
-    "variance_reduction_pct": 99.22183861805803,
-    "raw_prime_std": 293470.2913268061,
-    "norm_prime_std": 45916.805874805534,
-    "raw_comp_std": 298008.6447476001,
-    "norm_comp_std": 6540.665941136334
+    "raw_variance": 17550396.275517277,
+    "normalized_variance": 925.6182104758267,
+    "variance_reduction_pct": 99.99472594124973,
+    "raw_prime_std": 52.272922476310946,
+    "norm_prime_std": 17.96502433012198,
+    "raw_comp_std": 4932.807857258248,
+    "norm_comp_std": 32.18070750890329
+  },
+  "adaptive_threshold_protocol": [
+    {
+      "n_min": 2,
+      "n_max": 49,
+      "threshold": 1.030084,
+      "accuracy": 0.9375,
+      "precision": 0.833333,
+      "recall": 1.0
+    },
+    {
+      "n_min": 50,
+      "n_max": 999,
+      "threshold": 1.868096,
+      "accuracy": 1.0,
+      "precision": 1.0,
+      "recall": 1.0
+    },
+    {
+      "n_min": 1000,
+      "n_max": 9999,
+      "threshold": 2.492155,
+      "accuracy": 1.0,
+      "precision": 1.0,
+      "recall": 1.0
+    },
+    {
+      "n_min": 10000,
+      "n_max": 99999,
+      "threshold": 3.116183,
+      "accuracy": 1.0,
+      "precision": 1.0,
+      "recall": 1.0
+    }
+  ],
+  "theoretical_connections": {
+    "gamma": 0.5772156649015329,
+    "asymptotics": {
+      "kappa_smooth": "((ln x + 2\u03b3 - 1) ln x) / e\u00b2",
+      "prime_geodesic": "2 ln x / e\u00b2"
+    },
+    "windows": {
+      "100000": {
+        "prime_kappa_mean": 2.8129587971684056,
+        "composite_kappa_mean": 18.21285577160237,
+        "separation_ratio": 6.474625860121337,
+        "kappa_smooth": 18.17896729338387,
+        "prime_asymptotic": 3.116210057367514,
+        "composite_relative_error_pct": 0.18606899787423606
+      },
+      "500000": {
+        "prime_kappa_mean": 3.2536645561412088,
+        "composite_kappa_mean": 23.60823082983802,
+        "separation_ratio": 7.255889604623835,
+        "kappa_smooth": 23.57850885181229,
+        "prime_asymptotic": 3.551837528829537,
+        "composite_relative_error_pct": 0.12589667662925844
+      }
+    },
+    "sensitivity_scenarios": {
+      "unconditional_floor": 2.8,
+      "rh_floor": 3.4,
+      "large_x_projection_at_1e7": 8.136263490380694
+    }
   }
 }

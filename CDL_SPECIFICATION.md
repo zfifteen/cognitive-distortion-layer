@@ -50,8 +50,17 @@ classify(n, threshold) → {"prime", "composite"}
 2. Compare to threshold τ
 3. Return "prime" if κ(n) < τ, else "composite"
 
-**Default Threshold:**
-- τ = 1.5 (yields ~83% accuracy on seed set)
+**Seed Threshold:**
+- τ = 1.5 remains the seed-range default and smoke-test baseline
+
+**Adaptive Threshold Protocol:**
+- Range-adaptive τ is the primary protocol for deployed classification
+- Current calibrated map:
+  - `[2, 49]` → τ ≈ 1.03
+  - `[50, 999]` → τ ≈ 1.87
+  - `[1000, 9999]` → τ ≈ 2.49
+  - `[10000, 99999]` → τ ≈ 3.12
+- `threshold_map.csv` is the reproducible artifact for this protocol
 
 **Configuration:**
 - Threshold can be tuned per range/task
@@ -96,8 +105,9 @@ Z(n) = n / exp(v · κ(n))
 
 **Workflow:**
 1. Compute κ(n) for candidate n
-2. If κ(n) < threshold: "likely prime" → run full primality test
-3. If κ(n) ≥ threshold: "likely composite" → skip or deprioritize
+2. Select τ from the calibrated range map when operating off the seed range
+3. If κ(n) < τ: "likely prime" → run full primality test
+4. If κ(n) ≥ τ: "likely composite" → skip or deprioritize
 
 **Benefit:** Reduces expensive tests on obvious composites
 
@@ -119,6 +129,15 @@ Z(n) = n / exp(v · κ(n))
 3. Use {Z₁, Z₂, ..., Zₖ} as stable feature scale
 
 **Benefit:** Removes scale-dependent noise, improves cross-range comparisons
+
+### Continuous Signal Pipeline
+
+**Workflow:**
+1. Evaluate `κ_smooth(x) = ((ln x + 2γ - 1) ln x) / e²`
+2. Apply `Z(x) = x / exp(v · κ_smooth(x))`
+3. Use the hybrid path: exact `κ(n)` on integers, smooth curvature elsewhere
+
+**Benefit:** Extends the same curvature and normalization logic into real-valued domains without discarding the exact integer contract.
 
 ## Validation Protocol
 
@@ -191,6 +210,7 @@ Z(n) = n / exp(v · κ(n))
 - Cached divisor lookups for hot paths
 - Integration with ML-based primality classifiers
 - Cross-framework signal harmonization
+- Continuous-domain extensions via κ_smooth(x)
 
 ---
 

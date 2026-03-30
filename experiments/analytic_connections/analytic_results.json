@@ -1,0 +1,30 @@
+{
+  "gamma": 0.5772156649015329,
+  "asymptotics": {
+    "kappa_smooth": "((ln x + 2\u03b3 - 1) ln x) / e\u00b2",
+    "prime_geodesic": "2 ln x / e\u00b2"
+  },
+  "windows": {
+    "100000": {
+      "prime_kappa_mean": 2.8129587971684056,
+      "composite_kappa_mean": 18.21285577160237,
+      "separation_ratio": 6.474625860121337,
+      "kappa_smooth": 18.17896729338387,
+      "prime_asymptotic": 3.116210057367514,
+      "composite_relative_error_pct": 0.18606899787423606
+    },
+    "500000": {
+      "prime_kappa_mean": 3.2536645561412088,
+      "composite_kappa_mean": 23.60823082983802,
+      "separation_ratio": 7.255889604623835,
+      "kappa_smooth": 23.57850885181229,
+      "prime_asymptotic": 3.551837528829537,
+      "composite_relative_error_pct": 0.12589667662925844
+    }
+  },
+  "sensitivity_scenarios": {
+    "unconditional_floor": 2.8,
+    "rh_floor": 3.4,
+    "large_x_projection_at_1e7": 8.136263490380694
+  }
+}

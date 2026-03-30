@@ -1,7 +1,10 @@
-import math
-import numpy as np
-import matplotlib.pyplot as plt
 import csv
+import math
+
+import matplotlib
+matplotlib.use("Agg")
+import matplotlib.pyplot as plt
+import numpy as np
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.model_selection import train_test_split
 
@@ -54,7 +57,7 @@ def simulate_cognitive_experiment(model, n_values, cognitive_load=0.0):
     return results
 
 
-def plot_perceptual_distortion(results, model):
+def plot_perceptual_distortion(results, model, output_path=None):
     n_vals = [r[0] for r in results]
     true_vals = [r[1] for r in results]
     perceived_vals = [r[2] for r in results]
@@ -86,32 +89,47 @@ def plot_perceptual_distortion(results, model):
     plt.grid(True)
 
     plt.tight_layout()
-    plt.show()
+    if output_path:
+        plt.savefig(output_path, dpi=300, bbox_inches='tight')
+    plt.close()
 
 
 def export_results_to_csv(results, filename="cognitive_results.csv"):
     with open(filename, mode='w', newline='') as file:
-        writer = csv.writer(file)
+        writer = csv.writer(file, lineterminator="\n")
         writer.writerow(["n", "Z(n)", "Perceived", "Distortion", "Curvature"])
         for row in results:
             writer.writerow(row)
 
 
 def ai_validation_experiment(model, max_n=1000):
-    X_raw = np.array([[n, model.compute_cognitive_curvature(n)] for n in range(2, max_n)])
-    y = np.array([1 if model.is_prime(n) else 0 for n in range(2, max_n)])
+    numbers = np.arange(2, max_n)
+    y = np.array([1 if model.is_prime(n) else 0 for n in numbers])
 
-    X_transformed = np.array([[model.z_transform(n), model.compute_cognitive_curvature(n)]
-                              for n in range(2, max_n)])
+    X_raw = np.array([
+        [model.number_of_divisors(n), math.log(n)]
+        for n in numbers
+    ])
+    X_transformed = np.array([
+        [model.compute_cognitive_curvature(n), model.z_transform(n)]
+        for n in numbers
+    ])
 
-    X_train, X_test, y_train, y_test = train_test_split(X_raw, y, test_size=0.2)
-    Xt_train, Xt_test, _, _ = train_test_split(X_transformed, y, test_size=0.2)
+    train_idx, test_idx = train_test_split(
+        np.arange(len(numbers)),
+        test_size=0.2,
+        random_state=42,
+        stratify=y,
+    )
 
-    model_raw = RandomForestClassifier().fit(X_train, y_train)
-    model_transformed = RandomForestClassifier().fit(Xt_train, y_train)
+    model_raw = RandomForestClassifier(random_state=42).fit(X_raw[train_idx], y[train_idx])
+    model_transformed = RandomForestClassifier(random_state=42).fit(
+        X_transformed[train_idx],
+        y[train_idx],
+    )
 
-    raw_score = model_raw.score(X_test, y_test)
-    trans_score = model_transformed.score(Xt_test, y_test)
+    raw_score = model_raw.score(X_raw[test_idx], y[test_idx])
+    trans_score = model_transformed.score(X_transformed[test_idx], y[test_idx])
 
     return raw_score, trans_score
 
@@ -129,7 +147,11 @@ if __name__ == "__main__":
         results = simulate_cognitive_experiment(model, numbers, cognitive_load=load)
         for n, true, perceived, distortion, curvature in results:
             print(f"{n:2} | {true:8.4f} | {perceived:10.4f} | {distortion:+.4f} | {curvature:.4f}")
-        plot_perceptual_distortion(results, model)
+        plot_perceptual_distortion(
+            results,
+            model,
+            output_path=f"perceptual_distortion_load_{int(load * 100)}.png",
+        )
         export_results_to_csv(results, filename=f"results_load_{int(load*100)}.csv")
 
     raw_acc, trans_acc = ai_validation_experiment(model, max_n=1000)

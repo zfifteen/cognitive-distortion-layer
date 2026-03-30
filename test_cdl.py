@@ -12,10 +12,16 @@ Run with: python3 test_cdl.py
 
 import cdl
 import math
+import numpy as np
+
+from cdl_continuous import ContinuousVRecovery, generate_continuous_z_sequence, hybrid_classify, kappa_smooth, z_normalize_continuous
+from v_recovery import VRecovery, generate_z_sequence
 
 
 class TestResults:
     """Simple test results tracker."""
+    __test__ = False
+
     def __init__(self):
         self.passed = 0
         self.failed = 0
@@ -49,6 +55,12 @@ def assert_close(actual, expected, tolerance=0.001, name=""):
     return passed, msg
 
 
+def _maybe_return_for_cli(passed):
+    if __name__ == "__main__":
+        return passed
+    return None
+
+
 def test_divisor_count():
     """Test divisor counting function."""
     print("\n" + "=" * 70)
@@ -79,8 +91,9 @@ def test_divisor_count():
         status = "✓" if passed else "✗"
         print(f"  {status} divisor_count({n:3}) = {actual} (expected {expected})")
     
-    results.summary()
-    return results.failed == 0
+    passed = results.summary()
+    assert passed
+    return _maybe_return_for_cli(passed)
 
 
 def test_kappa_computation():
@@ -131,8 +144,9 @@ def test_kappa_computation():
     results.add_result("monotonic growth within d(n) class", passed)
     print(f"  {'✓' if passed else '✗'} κ(n) monotonically increases for fixed d(n)")
     
-    results.summary()
-    return results.failed == 0
+    passed = results.summary()
+    assert passed
+    return _maybe_return_for_cli(passed)
 
 
 def test_classification():
@@ -186,8 +200,9 @@ def test_classification():
     results.add_result("batch classification", passed)
     print(f"  {'✓' if passed else '✗'} Batch classification returns {len(batch_results)} results")
     
-    results.summary()
-    return results.failed == 0
+    passed = results.summary()
+    assert passed
+    return _maybe_return_for_cli(passed)
 
 
 def test_z_normalization():
@@ -245,8 +260,9 @@ def test_z_normalization():
     results.add_result("batch normalization", passed)
     print(f"\n  {'✓' if passed else '✗'} Batch normalization returns {len(batch_results)} results")
     
-    results.summary()
-    return results.failed == 0
+    passed = results.summary()
+    assert passed
+    return _maybe_return_for_cli(passed)
 
 
 def test_integration_helpers():
@@ -295,8 +311,9 @@ def test_integration_helpers():
     results.add_result("signal normalization", passed)
     print(f"  {'✓' if passed else '✗'} Signal normalization processes {len(normalized)} signals")
     
-    results.summary()
-    return results.failed == 0
+    passed = results.summary()
+    assert passed
+    return _maybe_return_for_cli(passed)
 
 
 def test_baseline_reproduction():
@@ -346,8 +363,173 @@ def test_baseline_reproduction():
     results.add_result("classification accuracy ≈ 83%", passed)
     print(f"  {'✓' if passed else '✗'} Classification accuracy = {accuracy:.1%} (expected ~83%)")
     
-    results.summary()
-    return results.failed == 0
+    passed = results.summary()
+    assert passed
+    return _maybe_return_for_cli(passed)
+
+
+def test_v_recovery():
+    """Test traversal-rate recovery from synthetic Z sequences."""
+    print("\n" + "=" * 70)
+    print("TEST: v Recovery")
+    print("=" * 70)
+
+    results = TestResults()
+    rng = np.random.default_rng(321)
+    recovery = VRecovery(
+        calibration_n_max=3000,
+        sample_size=500,
+        sequence_type="random",
+        reference_trials=10,
+        random_seed=321,
+    )
+    v_true = 1.5
+    z_sequence, _ = generate_z_sequence(
+        numbers=recovery.numbers,
+        kappas=recovery.kappas,
+        rng=rng,
+        v=v_true,
+        sample_size=500,
+        sequence_type="random",
+        noise_level=0.01,
+        prime_mask=recovery.prime_mask,
+    )
+
+    mle_result = recovery.infer_v(z_sequence, method="mle")
+    fingerprint_result = recovery.infer_v(z_sequence, method="fingerprint")
+    moment_result = recovery.infer_v(z_sequence, method="moment_match")
+
+    mle_passed = abs(mle_result.v_estimate - v_true) <= 0.05
+    results.add_result(
+        "MLE recovers v within 0.05",
+        mle_passed,
+        f"Expected {v_true}, got {mle_result.v_estimate:.4f}",
+    )
+    print(
+        f"  {'✓' if mle_passed else '✗'} MLE estimate = {mle_result.v_estimate:.4f} "
+        f"(target {v_true:.2f})"
+    )
+
+    fingerprint_passed = abs(fingerprint_result.v_estimate - v_true) <= 0.10
+    results.add_result(
+        "fingerprint recovers v within 0.10",
+        fingerprint_passed,
+        f"Expected {v_true}, got {fingerprint_result.v_estimate:.4f}",
+    )
+    print(
+        f"  {'✓' if fingerprint_passed else '✗'} Fingerprint estimate = "
+        f"{fingerprint_result.v_estimate:.4f} (target {v_true:.2f})"
+    )
+
+    moment_passed = abs(moment_result.v_estimate - v_true) <= 0.10
+    results.add_result(
+        "moment matching recovers v within 0.10",
+        moment_passed,
+        f"Expected {v_true}, got {moment_result.v_estimate:.4f}",
+    )
+    print(
+        f"  {'✓' if moment_passed else '✗'} Moment-match estimate = "
+        f"{moment_result.v_estimate:.4f} (target {v_true:.2f})"
+    )
+
+    passed = results.summary()
+    assert passed
+    return _maybe_return_for_cli(passed)
+
+
+def test_adaptive_threshold_protocol():
+    """Test the Sprint 1 adaptive threshold map and partial QMC bias."""
+    print("\n" + "=" * 70)
+    print("TEST: Adaptive Threshold Protocol")
+    print("=" * 70)
+
+    results = TestResults()
+
+    threshold = cdl.find_adaptive_threshold(1000, 9999)
+    threshold_passed = abs(threshold - 2.4921548014819255) <= 0.05
+    results.add_result(
+        "adaptive threshold on 1K–9.99K window",
+        threshold_passed,
+        f"Expected ≈2.49, got {threshold:.4f}",
+    )
+    print(
+        f"  {'✓' if threshold_passed else '✗'} Adaptive τ(1000–9999) = {threshold:.4f}"
+    )
+
+    adaptive_label = cdl.classify(1009, adaptive=True)
+    label_passed = adaptive_label == "prime"
+    results.add_result("adaptive classify prime", label_passed, adaptive_label)
+    print(f"  {'✓' if label_passed else '✗'} classify(1009, adaptive=True) = {adaptive_label}")
+
+    candidates = list(range(100, 120))
+    original = cdl.qmc_sampling_bias(candidates, bias_strength=0.0)
+    partial = cdl.qmc_sampling_bias(candidates, bias_strength=0.5)
+    full = cdl.qmc_sampling_bias(candidates, bias_strength=1.0)
+    qmc_passed = original == candidates and partial != full and partial != original
+    results.add_result("partial QMC bias is distinct", qmc_passed)
+    print(f"  {'✓' if qmc_passed else '✗'} Partial QMC bias produces a distinct ordering")
+
+    passed = results.summary()
+    assert passed
+    return _maybe_return_for_cli(passed)
+
+
+def test_continuous_extension():
+    """Test the Sprint 5 continuous extension and v recovery transfer."""
+    print("\n" + "=" * 70)
+    print("TEST: Continuous Extension")
+    print("=" * 70)
+
+    results = TestResults()
+
+    smooth_value = kappa_smooth(500000.0)
+    smooth_passed, msg = assert_close(smooth_value, 23.5785088518, tolerance=0.05)
+    results.add_result("kappa_smooth(500000) matches asymptotic target", smooth_passed, msg)
+    print(
+        f"  {'✓' if smooth_passed else '✗'} kappa_smooth(500000) = {smooth_value:.4f}"
+    )
+
+    z_value = z_normalize_continuous(10000.5, v=0.115)
+    z_passed = z_value <= 10000.5
+    results.add_result("continuous Z reduces magnitude", z_passed)
+    print(f"  {'✓' if z_passed else '✗'} Z_continuous(10000.5) = {z_value:.4f}")
+
+    hybrid_passed = hybrid_classify(101.0) == cdl.classify(101)
+    results.add_result("hybrid classify falls back on integers", hybrid_passed)
+    print(f"  {'✓' if hybrid_passed else '✗'} hybrid_classify(101.0) matches exact classify")
+
+    rng = np.random.default_rng(123)
+    recovery = ContinuousVRecovery(
+        x_min=1000.0,
+        x_max=1_000_000.0,
+        support_points=8000,
+        sample_size=2000,
+        reference_trials=8,
+        random_seed=123,
+    )
+    z_sequence, _ = generate_continuous_z_sequence(
+        rng=rng,
+        v=1.5,
+        sample_size=2000,
+        x_min=1000.0,
+        x_max=1_000_000.0,
+        noise_level=0.03,
+    )
+    inference = recovery.infer_v(z_sequence, method="fingerprint")
+    recovery_passed = abs(inference.v_estimate - 1.5) <= 0.05
+    results.add_result(
+        "continuous fingerprint recovery",
+        recovery_passed,
+        f"Expected 1.5, got {inference.v_estimate:.4f}",
+    )
+    print(
+        f"  {'✓' if recovery_passed else '✗'} Continuous fingerprint estimate = "
+        f"{inference.v_estimate:.4f}"
+    )
+
+    passed = results.summary()
+    assert passed
+    return _maybe_return_for_cli(passed)
 
 
 def run_all_tests():
@@ -365,6 +547,9 @@ def run_all_tests():
     all_passed &= test_z_normalization()
     all_passed &= test_integration_helpers()
     all_passed &= test_baseline_reproduction()
+    all_passed &= test_adaptive_threshold_protocol()
+    all_passed &= test_v_recovery()
+    all_passed &= test_continuous_extension()
     
     # Final summary
     print("\n" + "=" * 70)

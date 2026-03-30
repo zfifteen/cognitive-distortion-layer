@@ -1,0 +1,18 @@
+{
+  "fidelity_relative_error_pct": {
+    "100000": 0.18606899787423606,
+    "500000": 0.12589667662925844
+  },
+  "continuous_separation_ratio": {
+    "2000000": 7.331544534163642,
+    "5000000": 7.789689900100721
+  },
+  "variance_reduction_pct": 98.7426734368467,
+  "v_recovery_transfer": {
+    "method": "fingerprint",
+    "sample_size": 5000,
+    "noise_level": 0.03,
+    "mae": 0.006422641245259597,
+    "success_rate": 1.0
+  }
+}

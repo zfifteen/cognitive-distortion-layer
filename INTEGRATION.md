@@ -33,7 +33,7 @@ candidates = [1009, 1010, 1011, 1012, 1013, 1014, 1015]
 # Step 1: Fast prefilter using κ(n)
 likely_primes, likely_composites = cdl.prime_diagnostic_prefilter(
     candidates,
-    threshold=1.5,
+    threshold=cdl.lookup_adaptive_threshold(max(candidates)),
     full_test_threshold=False  # Set True to verify with full test
 )
 
@@ -59,7 +59,7 @@ actual_primes = [n for n in likely_primes if cdl.is_prime(n)]
 
 **Why κ(n) helps:**
 - Composites have higher divisor counts → higher κ
-- Simple threshold (τ=1.5) filters ~88% of composites correctly
+- Range-adaptive τ keeps the prefilter aligned with scale
 - False negatives (primes called composite) are acceptable for a prefilter
 - False positives (composites called prime) get caught by full test
 
@@ -234,6 +234,7 @@ for n in sorted(raw_signals.keys()):
 - Composites compress more (high correction)
 - Makes cross-range comparisons meaningful
 - Variance reduction: 95-99% in typical applications
+- Asymptotic priors from Sprint 4 give a scale-aware baseline for wide-range normalization
 
 **When to use:**
 - Signal processing across integer indices
@@ -248,6 +249,37 @@ From baseline report (n=2-999):
 - Raw signal variance: 8.87×10¹⁰
 - Normalized variance: 6.90×10⁸
 - **Variance reduction: 99.2%**
+
+---
+
+## Integration Port 4: Continuous Signal Pipelines
+
+### Problem
+Some downstream workflows operate on real-valued coordinates or dense manifolds rather than exact integers.
+
+### Solution with κ_smooth(x)
+Use the smooth curvature surrogate:
+
+```python
+import cdl_continuous
+
+x = 250000.5
+kappa_value = cdl_continuous.kappa_smooth(x)
+z_value = cdl_continuous.z_normalize_continuous(x, v=0.115)
+label = cdl_continuous.hybrid_classify(x, tau=1.5, adaptive=True)
+```
+
+### Rationale
+
+**Why κ_smooth(x) helps:**
+- Preserves the large-scale curvature envelope derived from the average order of d(n)
+- Keeps exact κ(n) available on integer points through the hybrid path
+- Extends Z-normalization and v-recovery into continuous domains without changing the canonical integer contract
+
+### When to use
+- Continuous number-line or perceptual-scaling tasks
+- Real-valued QMC pipelines
+- Hybrid ML features spanning integer and non-integer coordinates
 
 ---
 

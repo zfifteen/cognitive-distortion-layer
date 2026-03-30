@@ -19,6 +19,14 @@ import math
 from typing import Tuple, Dict, List, Literal
 
 
+ADAPTIVE_THRESHOLD_MAP: Tuple[Tuple[int, int, float], ...] = (
+    (2, 49, 1.0300838991471646),
+    (50, 999, 1.8680958866030908),
+    (1000, 9999, 2.4921548014819255),
+    (10000, 99999, 3.116182988943887),
+)
+
+
 # ============================================================================
 # Core Primitive 1: Curvature Signal κ(n)
 # ============================================================================
@@ -92,30 +100,86 @@ def kappa(n: int) -> float:
 # Core Primitive 2: Threshold Classifier
 # ============================================================================
 
-def classify(n: int, threshold: float = 1.5) -> Literal["prime", "composite"]:
+def find_adaptive_threshold(
+    n_min: int,
+    n_max: int,
+    threshold_range: Tuple[float, float] = (0.5, 5.0),
+    steps: int = 180,
+) -> float:
+    """
+    Fit a range-adaptive τ over [n_min, n_max].
+
+    This treats threshold drift as a configuration problem tied to range, not as
+    a failure of the curvature signal itself.
+    """
+    if n_min < 2 or n_max < n_min:
+        raise ValueError("Adaptive threshold ranges must satisfy 2 <= n_min <= n_max")
+
+    numbers = list(range(n_min, n_max + 1))
+    primes = [n for n in numbers if is_prime(n)]
+    composites = [n for n in numbers if not is_prime(n)]
+    threshold, _, _ = find_optimal_threshold(
+        primes,
+        composites,
+        threshold_range=threshold_range,
+        steps=steps,
+    )
+    return threshold
+
+
+def lookup_adaptive_threshold(n: int) -> float:
+    """
+    Look up a calibrated τ for the scale around n.
+
+    The map is fit on the four validation windows introduced in Sprint 1 and is
+    interpolated in log-space outside the seed window.
+    """
+    if n < 2:
+        return ADAPTIVE_THRESHOLD_MAP[0][2]
+
+    for lower, upper, threshold in ADAPTIVE_THRESHOLD_MAP:
+        if lower <= n <= upper:
+            return threshold
+
+    log_n = math.log(n)
+    midpoints = [
+        math.log(math.sqrt(lower * upper))
+        for lower, upper, _ in ADAPTIVE_THRESHOLD_MAP
+    ]
+    thresholds = [threshold for _, _, threshold in ADAPTIVE_THRESHOLD_MAP]
+
+    if log_n <= midpoints[0]:
+        return thresholds[0]
+
+    if log_n >= midpoints[-1]:
+        x1, x2 = midpoints[-2], midpoints[-1]
+        y1, y2 = thresholds[-2], thresholds[-1]
+        slope = (y2 - y1) / (x2 - x1)
+        return y2 + slope * (log_n - x2)
+
+    for idx in range(len(midpoints) - 1):
+        x1, x2 = midpoints[idx], midpoints[idx + 1]
+        if x1 <= log_n <= x2:
+            y1, y2 = thresholds[idx], thresholds[idx + 1]
+            weight = (log_n - x1) / (x2 - x1)
+            return y1 + weight * (y2 - y1)
+
+    return thresholds[-1]
+
+
+def classify(
+    n: int,
+    threshold: float = 1.5,
+    adaptive: bool = False,
+) -> Literal["prime", "composite"]:
     """
     Classify n as prime or composite based on κ(n) threshold.
-    
-    Default threshold τ=1.5 yields ~83% accuracy on seed set (n=2-49).
-    
-    Protocol:
-        1. Compute κ(n)
-        2. If κ(n) < threshold: "prime"
-        3. Otherwise: "composite"
-    
-    Args:
-        n: Integer to classify
-        threshold: Classification threshold (default 1.5)
-        
-    Returns:
-        "prime" if κ(n) < threshold, else "composite"
-        
-    Examples:
-        >>> classify(7)    # κ(7) ≈ 0.54
-        'prime'
-        >>> classify(12)   # κ(12) ≈ 2.03
-        'composite'
+
+    When adaptive=True, τ is selected from the Sprint 1 range-adaptive protocol.
     """
+    if adaptive:
+        threshold = lookup_adaptive_threshold(n)
+
     k = kappa(n)
     return "prime" if k < threshold else "composite"
 
@@ -410,29 +474,31 @@ def qmc_sampling_bias(
     Returns:
         Biased list of candidates
     """
-    if bias_strength == 0:
-        return candidates
+    if bias_strength <= 0:
+        return list(candidates)
     
     # Compute κ for each
-    kappa_pairs = [(n, kappa(n)) for n in candidates]
+    indexed_candidates = list(enumerate(candidates))
+    kappa_pairs = [(idx, n, kappa(n)) for idx, n in indexed_candidates]
     
     # Sort by κ
-    kappa_pairs.sort(key=lambda x: x[1])
+    kappa_pairs.sort(key=lambda x: x[2])
     
     # Extract sorted candidates
-    sorted_candidates = [n for n, k in kappa_pairs]
+    sorted_candidates = [n for _, n, _ in kappa_pairs]
     
-    if bias_strength == 1.0:
+    if bias_strength >= 1.0:
         return sorted_candidates
-    
-    # Partial bias: blend original and sorted
-    blend = []
-    for i in range(len(candidates)):
-        idx = int(i * bias_strength + i * (1 - bias_strength))
-        idx = min(idx, len(sorted_candidates) - 1)
-        blend.append(sorted_candidates[idx])
-    
-    return blend
+
+    sorted_rank = {original_index: rank for rank, (original_index, _, _) in enumerate(kappa_pairs)}
+    blended = sorted(
+        indexed_candidates,
+        key=lambda pair: (
+            bias_strength * sorted_rank[pair[0]] + (1.0 - bias_strength) * pair[0],
+            pair[0],
+        ),
+    )
+    return [candidate for _, candidate in blended]
 
 
 def signal_normalize_pipeline(

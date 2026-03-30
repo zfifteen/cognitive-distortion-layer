@@ -10,8 +10,67 @@ This report establishes baseline metrics for κ(n) curvature signal:
 """
 
 import json
+import csv
+from pathlib import Path
 from typing import Dict, List, Tuple
 import cdl
+
+
+def load_empirical_signal() -> Dict[int, float]:
+    """Build a real-world-like signal from the saved cognitive load traces."""
+    signal_files = [
+        Path("results_load_0.csv"),
+        Path("results_load_30.csv"),
+        Path("results_load_70.csv"),
+    ]
+    traces: Dict[int, List[float]] = {}
+
+    for path in signal_files:
+        if not path.exists():
+            continue
+        with path.open(newline="") as handle:
+            reader = csv.DictReader(handle)
+            for row in reader:
+                n = int(row["n"])
+                traces.setdefault(n, []).append(float(row["Perceived"]))
+
+    if not traces:
+        raise FileNotFoundError("Expected results_load_*.csv traces for empirical ablation")
+
+    return {
+        n: sum(values) / len(values)
+        for n, values in sorted(traces.items())
+    }
+
+
+def load_threshold_protocol() -> List[Dict[str, float]]:
+    """Load the Sprint 1 threshold map when present."""
+    path = Path("threshold_map.csv")
+    if not path.exists():
+        return []
+
+    with path.open(newline="") as handle:
+        return [
+            {
+                "n_min": int(row["n_min"]),
+                "n_max": int(row["n_max"]),
+                "threshold": float(row["threshold"]),
+                "accuracy": float(row["accuracy"]),
+                "precision": float(row["precision"]),
+                "recall": float(row["recall"]),
+            }
+            for row in csv.DictReader(handle)
+        ]
+
+
+def load_theoretical_metrics() -> Dict:
+    """Load the Sprint 4 metrics when present."""
+    path = Path("experiments/analytic_connections/analytic_results.json")
+    if not path.exists():
+        return {}
+
+    with path.open() as handle:
+        return json.load(handle)
 
 
 def generate_seed_report() -> Dict:
@@ -206,10 +265,8 @@ def ablation_study() -> Dict:
     print("ABLATION STUDY: Z-Normalization Impact")
     print("=" * 70)
     
-    test_range = list(range(2, 1000))
-    
-    # Simulate a signal pipeline: raw values are just n^2 for demonstration
-    raw_signals = {n: n ** 2 for n in test_range}
+    raw_signals = load_empirical_signal()
+    test_range = sorted(raw_signals.keys())
     
     # Compute variance without normalization
     raw_values = list(raw_signals.values())
@@ -226,7 +283,7 @@ def ablation_study() -> Dict:
     
     variance_reduction = (1 - norm_variance / raw_variance) * 100 if raw_variance > 0 else 0
     
-    print(f"\nSignal Pipeline Analysis (n=2-999):")
+    print(f"\nSignal Pipeline Analysis (empirical cognitive traces):")
     print(f"  Raw signal variance:    {raw_variance:.2e}")
     print(f"  Raw signal std dev:     {raw_std:.2e}")
     print(f"\n  Normalized variance:    {norm_variance:.2e}")
@@ -345,6 +402,14 @@ def save_reports(seed_report: Dict, holdout_report: Dict, ablation_report: Dict)
         "holdout_set": holdout_report,
         "ablation_study": ablation_report
     }
+
+    threshold_protocol = load_threshold_protocol()
+    if threshold_protocol:
+        reports["adaptive_threshold_protocol"] = threshold_protocol
+
+    theoretical_metrics = load_theoretical_metrics()
+    if theoretical_metrics:
+        reports["theoretical_connections"] = theoretical_metrics
     
     with open("baseline_report.json", "w") as f:
         json.dump(reports, f, indent=2)
