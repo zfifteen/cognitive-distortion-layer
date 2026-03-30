@@ -1,0 +1,39 @@
+{
+  "experiment": {
+    "range": [
+      50,
+      10000
+    ],
+    "threshold": 1.5,
+    "bootstrap_samples": 1000
+  },
+  "dataset": {
+    "total": 9951,
+    "primes": 1214,
+    "composites": 8737
+  },
+  "curvature_statistics": {
+    "prime_mean_kappa": 2.197254420604798,
+    "composite_mean_kappa": 11.75253116855561,
+    "separation_ratio": 5.348734792997119
+  },
+  "classification_metrics": {
+    "accuracy": 88.19214149331725,
+    "precision": 100.0,
+    "recall": 3.2125205930807246,
+    "f1_score": 6.225059856344772
+  },
+  "bootstrap_ci": {
+    "mean_accuracy": 88.19034267912771,
+    "confidence_interval": [
+      87.55878806150136,
+      88.78529796000402
+    ]
+  },
+  "confusion_matrix": {
+    "true_positives": 39,
+    "false_positives": 0,
+    "true_negatives": 8737,
+    "false_negatives": 1175
+  }
+}

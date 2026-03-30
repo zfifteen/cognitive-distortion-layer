@@ -1,0 +1,57 @@
+{
+  "seed_set": {
+    "range": [
+      2,
+      49
+    ],
+    "n_primes": 15,
+    "n_composites": 33,
+    "prime_kappa_mean": 0.7391150530901279,
+    "composite_kappa_mean": 2.2522583140606045,
+    "separation_ratio": 3.047236427731047,
+    "optimal_threshold": 1.05,
+    "accuracy": 0.9375,
+    "metrics": {
+      "threshold": 1.05,
+      "accuracy": 0.9375,
+      "precision": 0.8333333333333334,
+      "recall": 1.0,
+      "f1_score": 0.9090909090909091,
+      "true_positives": 15,
+      "false_positives": 3,
+      "true_negatives": 30,
+      "false_negatives": 0
+    }
+  },
+  "holdout_set": {
+    "range": [
+      50,
+      10000
+    ],
+    "n_primes": 1214,
+    "n_composites": 8737,
+    "prime_kappa_mean": 2.197254420604798,
+    "composite_kappa_mean": 11.752531168555612,
+    "separation_ratio": 5.34873479299712,
+    "threshold": 1.5,
+    "accuracy": 0.8819214149331726,
+    "precision": 1.0,
+    "recall": 0.03212520593080725,
+    "f1_score": 0.06225059856344772,
+    "confusion_matrix": {
+      "tp": 39,
+      "fp": 0,
+      "tn": 8737,
+      "fn": 1175
+    }
+  },
+  "ablation_study": {
+    "raw_variance": 88677550100.25,
+    "normalized_variance": 690054449.3323802,
+    "variance_reduction_pct": 99.22183861805803,
+    "raw_prime_std": 293470.2913268061,
+    "norm_prime_std": 45916.805874805534,
+    "raw_comp_std": 298008.6447476001,
+    "norm_comp_std": 6540.665941136334
+  }
+}
