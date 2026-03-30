@@ -1,0 +1,8 @@
+"Structural Class","Mean Z(n) at v=1.0"
+"prime","136.87"
+"prime square (d=3)","37.21"
+"semiprime/p³ (d=4)","22.15"
+"p²q or p⁵ (d=6)","3.42"
+"pqr or p⁷ (d=8)","0.58"
+"p²qr (d=12)","0.017"
+"highly composite (d≥16)","0.000213"
