@@ -1,5 +1,7 @@
 # Cognitive Model: A Forward Diagnostic Framework for Number-Theoretic Distortion
 
+![Cognitive Distortion Layer Banner](assets/readme-banners/banner.png)
+
 ## Overview
 
 This repository presents a theoretical and computational framework for analyzing discrete integer sequences through a geometry-inspired "curvature" model. By drawing a pedagogical analogy to relativistic distortions, we define a **forward diagnostic map** that highlights structural irregularities—especially those arising from divisor density. This model is intended for **structural analysis**, not for blind inversion of unknown values.
@@ -181,4 +183,3 @@ python generate_cdl_dashboards.py
 * **Parameter Estimation**: Explore data-driven methods to approximate traversal rates from observed distortions.
 * **Enhanced Classification**: Integrate curvature features into machine-learning classifiers for primality testing.
 * **Theoretical Extensions**: Investigate connections between divisor-based curvature and deeper analytic number theory.
-
