@@ -1,0 +1,104 @@
+{
+  "experiment_date": "2026-03-31",
+  "configuration": {
+    "exact_bits": 20,
+    "exact_count": 256,
+    "crypto_bits": 2048,
+    "crypto_count": 1024,
+    "mr_bases": [
+      2,
+      3,
+      5,
+      7,
+      11,
+      13,
+      17,
+      19
+    ],
+    "truth_check": false
+  },
+  "exact_scaling_boundary": {
+    "divisor_count_implementation": "O(sqrt n) enumeration",
+    "sqrt_space_bits": 1024,
+    "worst_case_candidate_bits": 2048
+  },
+  "exact_calibration": {
+    "candidate_source": "deterministic_sha256_odd_stream",
+    "candidate_count": 256,
+    "bit_length": 20,
+    "prime_count": 29,
+    "composite_count": 227,
+    "sweet_spot_v": 3.6945280494653248,
+    "prime_kappa_mean": 3.688274950245989,
+    "composite_kappa_mean": 16.75454988793984,
+    "separation_ratio": 4.542652083685464,
+    "algebraic_fixed_points": 29,
+    "numeric_fixed_points": 29,
+    "numeric_false_fixed_points": 0,
+    "strict_contractions": 227,
+    "z_timing_ms": {
+      "mean": 0.05423329296875,
+      "median": 0.0545625,
+      "min": 0.043875,
+      "max": 0.081291
+    },
+    "miller_rabin_control": {
+      "bases": [
+        2,
+        3,
+        5,
+        7,
+        11,
+        13,
+        17,
+        19
+      ],
+      "timing_ms": {
+        "mean": 0.00144024609375,
+        "median": 0.000292,
+        "min": 0.000208,
+        "max": 0.016125
+      },
+      "accuracy": 1.0,
+      "true_positives": 29,
+      "true_negatives": 227,
+      "false_positives": 0,
+      "false_negatives": 0
+    },
+    "candidate_preview": [
+      "0x81bbf",
+      "0x83eb3",
+      "0xe651d"
+    ]
+  },
+  "crypto_control": {
+    "candidate_source": "deterministic_sha256_odd_stream",
+    "candidate_count": 1024,
+    "bit_length": 2048,
+    "miller_rabin_bases": [
+      2,
+      3,
+      5,
+      7,
+      11,
+      13,
+      17,
+      19
+    ],
+    "miller_rabin_pass_count": 1,
+    "miller_rabin_pass_rate": 0.0009765625,
+    "first_pass_index": 354,
+    "timing_ms": {
+      "mean": 8.447843485351562,
+      "median": 0.0022705,
+      "min": 0.000708,
+      "max": 217.490958
+    },
+    "candidate_preview": [
+      "0xa8817da494bc5962...6d814142f23ea59b",
+      "0xc2c69823294fec0a...d89f136719477a33",
+      "0xfe93c2ed29b3f061...adcfdf3dfde4f103"
+    ]
+  },
+  "reproduction_command": "python3 experiments/crypto_prefilter/benchmark.py --exact-bits 20 --exact-count 256 --crypto-bits 2048 --crypto-count 1024 --mr-bases 2 3 5 7 11 13 17 19"
+}
