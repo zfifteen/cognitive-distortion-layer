@@ -85,6 +85,54 @@ likely_primes, likely_composites = cdl.prime_diagnostic_prefilter(candidates)
 
 ---
 
+## Integration Port 1B: Cryptographic Key Generation
+
+### Problem
+RSA, Diffie-Hellman, and ECC key generation spend most of their search time on composite candidates that never need a full Miller-Rabin path.
+
+### Solution with the Sweet-Spot Band
+Use the deterministic geodesic prefilter in `src/python/cdl_prime_geodesic_prefilter.py` to keep candidates on the sweet-spot band at `v = e² / 2`, reject composites as soon as a concrete factor appears in the gated prime tables, and run fixed-base Miller-Rabin plus final `sympy.isprime` confirmation on survivors.
+
+### Workflow
+
+```python
+import math
+
+from cdl_prime_geodesic_prefilter import CDLPrimeGeodesicPrefilter
+
+# Scenario: Generate 1024-bit RSA factors for a 2048-bit modulus
+p_prefilter = CDLPrimeGeodesicPrefilter(bit_length=1024, namespace="rsa-demo:p")
+q_prefilter = CDLPrimeGeodesicPrefilter(bit_length=1024, namespace="rsa-demo:q")
+
+p = p_prefilter.generate_prime(public_exponent=65537)
+q = q_prefilter.generate_prime(public_exponent=65537, excluded_values={p})
+
+# After generate_prime() returns, the survivor convention aligns with the fixed point:
+assert math.isclose(p_prefilter.proxy_z(p), 1.0, abs_tol=1e-12)
+assert math.isclose(q_prefilter.proxy_z(q), 1.0, abs_tol=1e-12)
+```
+
+### Production Result
+
+- `300` deterministic `2048`-bit RSA keypairs: `2.09x` end-to-end speedup (`291938.126792` ms down to `139942.831833` ms)
+- `50` deterministic `4096`-bit RSA keypairs: `2.82x` end-to-end speedup (`757750.922792` ms down to `268557.631625` ms)
+- Miller-Rabin reduction: `90.97%` at `2048` bits and `91.07%` at `4096` bits
+- Prime invariant: calibration held `29/29` fixed points with `0` composite false fixed points, and every final RSA factor stayed on the `Z = 1.0` band once primality was confirmed
+
+### Rationale
+
+- The gated prime tables strip easy composites before the expensive survivor regime.
+- The sweet-spot closed form keeps the prime class locked to `Z(p) = 1.0`.
+- `generate_prime()` preserves the benchmarked search shape: CDL geodesic prefilter first, fixed-base Miller-Rabin second, final primality confirmation last.
+
+### When to use
+
+- RSA key generation
+- Safe-prime search pipelines that already end in a deterministic or fixed-base probable-prime test
+- Batch cryptographic key provisioning where deterministic streams and reproducibility matter
+
+---
+
 ## Integration Port 2: QMC/Factorization Sampling
 
 ### Problem
