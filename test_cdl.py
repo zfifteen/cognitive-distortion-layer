@@ -14,6 +14,7 @@ import cdl
 import math
 import numpy as np
 
+from cognitive_pilot import CognitivePilot
 from cdl_continuous import ContinuousVRecovery, generate_continuous_z_sequence, hybrid_classify, kappa_smooth, z_normalize_continuous
 from v_recovery import VRecovery, generate_z_sequence
 
@@ -532,6 +533,69 @@ def test_continuous_extension():
     return _maybe_return_for_cli(passed)
 
 
+def test_cognitive_pilot():
+    """Test the Sprint 6 cognitive pilot on a deterministic participant."""
+    print("\n" + "=" * 70)
+    print("TEST: Cognitive Pilot")
+    print("=" * 70)
+
+    results = TestResults()
+    pilot = CognitivePilot(
+        n_max=10_000,
+        participant_trials=120,
+        support_size=20_000,
+        reference_trials=16,
+        random_seed=20260330,
+    )
+    rng = np.random.default_rng(77)
+    payload = pilot.simulate_participant(
+        participant_id="P01",
+        v_true=1.7,
+        rng=rng,
+        n_trials=120,
+        noise_sigma=0.06,
+    )
+    participant = pilot.run_participant(
+        payload["presented_n"],
+        payload["perceived_z"],
+        participant_id=payload["participant_id"],
+    )
+    comparison = pilot.compare_hybrid_vs_continuous(payload["perceived_z"], v_true=1.7)
+
+    recovery_passed = abs(participant.v_recovered - 1.7) <= 0.15
+    results.add_result(
+        "pilot recovers participant v within 0.15",
+        recovery_passed,
+        f"Expected 1.7, got {participant.v_recovered:.4f}",
+    )
+    print(
+        f"  {'✓' if recovery_passed else '✗'} Pilot estimate = "
+        f"{participant.v_recovered:.4f} (target 1.70)"
+    )
+
+    style_passed = participant.cognitive_style == "compressed distortion"
+    results.add_result("pilot style classification", style_passed, participant.cognitive_style)
+    print(
+        f"  {'✓' if style_passed else '✗'} Cognitive style = "
+        f"{participant.cognitive_style}"
+    )
+
+    improvement_passed = comparison["hybrid_error"] < comparison["continuous_error"]
+    results.add_result(
+        "hybrid pilot beats pure continuous recovery",
+        improvement_passed,
+        f"hybrid={comparison['hybrid_error']:.4f}, continuous={comparison['continuous_error']:.4f}",
+    )
+    print(
+        f"  {'✓' if improvement_passed else '✗'} Hybrid error = "
+        f"{comparison['hybrid_error']:.4f}, continuous error = {comparison['continuous_error']:.4f}"
+    )
+
+    passed = results.summary()
+    assert passed
+    return _maybe_return_for_cli(passed)
+
+
 def run_all_tests():
     """Run complete test suite."""
     print("\n" + "=" * 70)
@@ -550,6 +614,7 @@ def run_all_tests():
     all_passed &= test_adaptive_threshold_protocol()
     all_passed &= test_v_recovery()
     all_passed &= test_continuous_extension()
+    all_passed &= test_cognitive_pilot()
     
     # Final summary
     print("\n" + "=" * 70)

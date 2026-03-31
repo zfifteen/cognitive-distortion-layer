@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Reproduce the locally materialized Sprint 1–5 artifacts."""
+"""Reproduce the locally materialized Sprint 1–6 artifacts."""
 
 from __future__ import annotations
 
@@ -377,7 +377,9 @@ def main() -> int:
     run_command([sys.executable, "main.py"])
     run_command([sys.executable, "generate_plots.py"])
 
-    print("Sprint 1-5 reproduction complete")
+    run_command([sys.executable, "experiments/cognitive_pilot/benchmark.py"])
+
+    print("Sprint 1-6 reproduction complete")
     return 0
 
 
