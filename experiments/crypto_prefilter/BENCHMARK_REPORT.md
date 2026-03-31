@@ -39,7 +39,7 @@ and fixed-base Miller-Rabin on deterministic cryptographic-scale odd candidates.
 ## Status
 
 - `src/python/cdl_prime_geodesic_prefilter.py` now exposes the deterministic integration path benchmarked in this report.
-- `generate_prime()` keeps the CDL geodesic prefilter in front of fixed-base Miller-Rabin and returns the same deterministic prime stream that the baseline search reaches on the same namespace.
+- `generate_prime()` keeps the benchmarked CDL geodesic prefilter in front of fixed-base Miller-Rabin and then applies final `sympy.isprime` confirmation for the public prime-generation API.
 - Current production result: `2.09x` end-to-end speedup for `300` deterministic `2048`-bit RSA keypairs and `2.82x` for the `50`-keypair `4096`-bit spot-check, with `90.97%` to `91.07%` fewer Miller-Rabin calls.
 
 ## Exact Calibration

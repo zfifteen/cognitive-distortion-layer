@@ -255,6 +255,26 @@ def cheap_cdl_proxy(
             "smallest_factor": None,
             "residual_bits": 0,
         }
+    if n == 2:
+        return {
+            "z_hat": 1.0,
+            "d_est": 2.0,
+            "rejected": False,
+            "smallest_factor": None,
+            "factor_source": "survivor",
+            "residual_bits": 2,
+        }
+    if n % 2 == 0:
+        log_z = (1.0 - 3.0 / 2.0) * math.log(n)
+        z_hat = 0.0 if log_z < LOG_FLOAT_MIN else math.exp(log_z)
+        return {
+            "z_hat": z_hat,
+            "d_est": 3.0,
+            "rejected": True,
+            "smallest_factor": 2,
+            "factor_source": "even",
+            "residual_bits": n.bit_length(),
+        }
 
     original_n = n
     d_est, smallest_factor = prime_table.divisor_lower_bound(n)

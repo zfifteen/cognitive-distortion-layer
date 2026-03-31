@@ -109,7 +109,7 @@ normalized_signals = cdl.signal_normalize_pipeline(raw_signals, v=1.0)
 
 ### Deterministic Cryptographic Prime Generation
 
-The production CDL geodesic prefilter now ships as `src/python/cdl_prime_geodesic_prefilter.py`. It applies the sweet-spot band at `v = e² / 2`, rejects composites through deterministic gated prime tables, and hands surviving candidates to fixed-base Miller-Rabin.
+The production CDL geodesic prefilter now ships as `src/python/cdl_prime_geodesic_prefilter.py`. It applies the sweet-spot band at `v = e² / 2`, rejects composites through deterministic gated prime tables, and then runs fixed-base Miller-Rabin plus final `sympy.isprime` confirmation on survivors.
 
 ```python
 from cdl_prime_geodesic_prefilter import CDLPrimeGeodesicPrefilter

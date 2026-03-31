@@ -5,6 +5,8 @@ from __future__ import annotations
 import importlib.util
 from pathlib import Path
 
+import pytest
+
 
 ROOT = Path(__file__).resolve().parents[1]
 MODULE_PATH = ROOT / "experiments" / "crypto_prefilter" / "rsa_keygen_benchmark.py"
@@ -73,6 +75,41 @@ def test_generate_rsa_keypair_proxy_matches_baseline_on_small_panel():
     assert accelerated["proxy_time_ns"] >= 0
     assert accelerated["miller_rabin_time_ns"] >= 0
     assert accelerated["total_time_ns"] >= accelerated["assembly_time_ns"]
+
+
+def test_build_proxy_tables_skips_deep_tail_below_gate():
+    """The RSA benchmark should not build the deep tail when the gate is inactive."""
+    module = load_module()
+    primary, tail, deep_tail = module.build_proxy_tables(prime_bits=2048)
+
+    assert primary is not None
+    assert tail is not None
+    assert deep_tail is None
+
+
+def test_generate_rsa_keypair_validates_inputs():
+    """Invalid RSA sizes and exponents should fail fast with clear errors."""
+    module = load_module()
+
+    with pytest.raises(ValueError, match="rsa_bits"):
+        module.generate_rsa_keypair(
+            rsa_bits=63,
+            keypair_index=0,
+            public_exponent=65537,
+            mr_bases=[2, 3, 5, 7],
+            namespace="unit",
+            use_proxy=False,
+        )
+
+    with pytest.raises(ValueError, match="public_exponent"):
+        module.generate_rsa_keypair(
+            rsa_bits=64,
+            keypair_index=0,
+            public_exponent=2,
+            mr_bases=[2, 3, 5, 7],
+            namespace="unit",
+            use_proxy=False,
+        )
 
 
 def test_run_rsa_keygen_benchmark_reports_matching_keypairs_and_fixed_points():

@@ -101,6 +101,10 @@ def test_cheap_cdl_proxy_rejects_small_factor_composites_and_keeps_prime_band():
     assert composite_proxy["rejected"] is True
     assert composite_proxy["smallest_factor"] == 3
     assert composite_proxy["z_hat"] < 1.0
+    even_proxy = module.cheap_cdl_proxy(100, table)
+    assert even_proxy["rejected"] is True
+    assert even_proxy["smallest_factor"] == 2
+    assert even_proxy["factor_source"] == "even"
 
 
 def test_cheap_cdl_proxy_tail_interval_rejects_survivor_without_moving_prime_band():

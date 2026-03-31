@@ -32,6 +32,14 @@ DEFAULT_NAMESPACE = "cdl-rsa-keygen"
 RSA_VALIDATION_MESSAGE = 42
 
 
+def validate_rsa_inputs(rsa_bits: int, public_exponent: int) -> None:
+    """Require an even RSA modulus size and a usable odd public exponent."""
+    if rsa_bits < 4 or rsa_bits % 2 != 0:
+        raise ValueError("rsa_bits must be an even integer greater than or equal to 4")
+    if public_exponent <= 1 or public_exponent % 2 == 0:
+        raise ValueError("public_exponent must be an odd integer greater than 1")
+
+
 def deterministic_candidate_stream(bit_length: int, namespace: str) -> Iterator[int]:
     """Yield a deterministic, duplicate-free odd candidate stream."""
     seen = set()
@@ -49,7 +57,13 @@ def deterministic_candidate_stream(bit_length: int, namespace: str) -> Iterator[
         yield candidate
 
 
-def build_proxy_tables() -> tuple[benchmark.WheelPrimeTable, benchmark.WheelPrimeTable, benchmark.WheelPrimeTable]:
+def build_proxy_tables(
+    prime_bits: int,
+) -> tuple[
+    benchmark.WheelPrimeTable,
+    benchmark.WheelPrimeTable,
+    benchmark.WheelPrimeTable | None,
+]:
     """Build the deterministic prime tables used by the accelerated path."""
     primary = benchmark.WheelPrimeTable(
         benchmark.DEFAULT_PROXY_TRIAL_PRIME_LIMIT,
@@ -60,11 +74,13 @@ def build_proxy_tables() -> tuple[benchmark.WheelPrimeTable, benchmark.WheelPrim
         benchmark.DEFAULT_PROXY_TAIL_CHUNK_SIZE,
         start_exclusive=benchmark.DEFAULT_PROXY_TRIAL_PRIME_LIMIT,
     )
-    deep_tail = benchmark.WheelPrimeTable(
-        benchmark.DEFAULT_PROXY_DEEP_TAIL_PRIME_LIMIT,
-        benchmark.DEFAULT_PROXY_DEEP_TAIL_CHUNK_SIZE,
-        start_exclusive=benchmark.DEFAULT_PROXY_TAIL_PRIME_LIMIT,
-    )
+    deep_tail = None
+    if prime_bits >= benchmark.DEFAULT_PROXY_DEEP_TAIL_MIN_BITS:
+        deep_tail = benchmark.WheelPrimeTable(
+            benchmark.DEFAULT_PROXY_DEEP_TAIL_PRIME_LIMIT,
+            benchmark.DEFAULT_PROXY_DEEP_TAIL_CHUNK_SIZE,
+            start_exclusive=benchmark.DEFAULT_PROXY_TAIL_PRIME_LIMIT,
+        )
     return primary, tail, deep_tail
 
 
@@ -138,6 +154,7 @@ def generate_rsa_keypair(
     deep_tail_min_bits: int | None = None,
 ) -> Dict[str, int]:
     """Generate one deterministic RSA keypair and its search statistics."""
+    validate_rsa_inputs(rsa_bits, public_exponent)
     total_start_ns = time.perf_counter_ns()
     prime_bits = rsa_bits // 2
     p_namespace = f"{namespace}:{rsa_bits}:{keypair_index}:p"
@@ -356,7 +373,8 @@ def run_rsa_keygen_benchmark(
     namespace: str,
 ) -> Dict:
     """Run baseline and accelerated RSA key generation on the same deterministic streams."""
-    primary_table, tail_table, deep_tail_table = build_proxy_tables()
+    validate_rsa_inputs(rsa_bits, public_exponent)
+    primary_table, tail_table, deep_tail_table = build_proxy_tables(rsa_bits // 2)
     baseline_summary, baseline_keypairs = summarize_keygen_path(
         rsa_bits,
         keypair_count,

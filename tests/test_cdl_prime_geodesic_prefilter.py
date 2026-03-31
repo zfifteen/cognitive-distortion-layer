@@ -6,6 +6,7 @@ import math
 import sys
 from pathlib import Path
 
+import pytest
 from sympy import isprime
 
 
@@ -28,6 +29,8 @@ def test_prefilter_rejects_small_factor_composites_and_keeps_prime_band():
     composite = 3 * 101
     assert geodesic.is_prime_candidate(composite) is False
     assert geodesic.proxy_z(composite) < 1.0
+    assert geodesic.is_prime_candidate(100) is False
+    assert geodesic.proxy_z(100) < 1.0
 
 
 def test_large_composite_underflow_stays_explicitly_rejected():
@@ -84,6 +87,24 @@ def test_prefilter_exposes_tunable_tables_and_bounds_dedup_memory():
     assert small.deep_tail_min_bits == 64
     assert small._seen_candidates == set()
     assert large._seen_candidates is None
+    assert small.primary_table is prefilter.get_cached_wheel_prime_table(97, 8)
+
+
+def test_generate_prime_rejects_known_strong_pseudoprime():
+    """The public acceptance path should not accept the fixed-base pseudoprime example."""
+    geodesic = prefilter.CDLPrimeGeodesicPrefilter(bit_length=64, namespace="unit:pseudoprime")
+    pseudoprime = 341550071728321
+
+    assert prefilter.miller_rabin_fixed_bases(pseudoprime, prefilter.DEFAULT_MR_BASES) is True
+    assert geodesic.is_probable_prime(pseudoprime) is False
+
+
+def test_generate_prime_validates_public_exponent_up_front():
+    """Invalid RSA exponents should fail fast instead of spinning the search loop."""
+    geodesic = prefilter.CDLPrimeGeodesicPrefilter(bit_length=32, namespace="unit:exp")
+
+    with pytest.raises(ValueError, match="public_exponent"):
+        geodesic.generate_prime(public_exponent=2)
 
 
 def test_generate_rsa_prime_hits_exact_small_scale_fixed_point():

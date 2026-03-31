@@ -8,6 +8,8 @@ import math
 import sys
 from typing import Sequence
 
+from sympy import isprime
+
 
 SWEET_SPOT_V = math.e ** 2 / 2.0
 FIXED_POINT_TOLERANCE = 1e-12
@@ -24,6 +26,13 @@ DEFAULT_DEEP_TAIL_CHUNK_SIZE = 256
 DEFAULT_DEEP_TAIL_MIN_BITS = 4096
 DEFAULT_DEDUPLICATE_BELOW_BITS = 128
 LOG_FLOAT_MIN = math.log(sys.float_info.min)
+_PRIME_TABLE_CACHE: dict[tuple[int, int, int], "WheelPrimeTable"] = {}
+
+
+def validate_public_exponent(public_exponent: int) -> None:
+    """Require an odd RSA public exponent greater than one."""
+    if public_exponent <= 1 or public_exponent % 2 == 0:
+        raise ValueError("public_exponent must be an odd integer greater than 1")
 
 
 def deterministic_odd_candidate(
@@ -177,6 +186,20 @@ class WheelPrimeTable:
         return d_lower, factor
 
 
+def get_cached_wheel_prime_table(
+    limit: int,
+    chunk_size: int,
+    start_exclusive: int = 2,
+) -> WheelPrimeTable:
+    """Return a cached deterministic prime table for the requested interval."""
+    cache_key = (limit, chunk_size, start_exclusive)
+    table = _PRIME_TABLE_CACHE.get(cache_key)
+    if table is None:
+        table = WheelPrimeTable(limit, chunk_size, start_exclusive=start_exclusive)
+        _PRIME_TABLE_CACHE[cache_key] = table
+    return table
+
+
 class CDLPrimeGeodesicPrefilter:
     """Deterministic CDL accelerator locked to the sweet-spot prime band."""
 
@@ -221,18 +244,18 @@ class CDLPrimeGeodesicPrefilter:
         if bit_length < deduplicate_below_bits:
             self._seen_candidates = set()
 
-        self.primary_table = WheelPrimeTable(
+        self.primary_table = get_cached_wheel_prime_table(
             primary_prime_limit,
             primary_chunk_size,
         )
-        self.tail_table = WheelPrimeTable(
+        self.tail_table = get_cached_wheel_prime_table(
             tail_prime_limit,
             tail_chunk_size,
             start_exclusive=primary_prime_limit,
         )
         self.deep_tail_table = None
         if bit_length >= deep_tail_min_bits:
-            self.deep_tail_table = WheelPrimeTable(
+            self.deep_tail_table = get_cached_wheel_prime_table(
                 deep_tail_prime_limit,
                 deep_tail_chunk_size,
                 start_exclusive=tail_prime_limit,
@@ -247,6 +270,24 @@ class CDLPrimeGeodesicPrefilter:
                 "rejected": True,
                 "smallest_factor": None,
                 "factor_source": "invalid",
+            }
+        if n == 2:
+            return {
+                "z_hat": 1.0,
+                "d_est": 2.0,
+                "rejected": False,
+                "smallest_factor": None,
+                "factor_source": "survivor",
+            }
+        if n % 2 == 0:
+            log_z = (1.0 - 3.0 / 2.0) * math.log(n)
+            z_hat = 0.0 if log_z < LOG_FLOAT_MIN else math.exp(log_z)
+            return {
+                "z_hat": z_hat,
+                "d_est": 3.0,
+                "rejected": True,
+                "smallest_factor": 2,
+                "factor_source": "even",
             }
 
         d_est, smallest_factor = self.primary_table.divisor_lower_bound(n)
@@ -286,8 +327,9 @@ class CDLPrimeGeodesicPrefilter:
         `1.0` is the survivor convention for this prefilter: no factor was found in
         the gated prime tables, so the candidate advances to Miller-Rabin. It is not
         a primality proof by itself. After `generate_prime()` returns, the surviving
-        candidate has also passed fixed-base Miller-Rabin on the same deterministic
-        path, and the sweet-spot closed form locks confirmed primes to `Z = 1.0`.
+        candidate has also passed fixed-base Miller-Rabin and final `sympy.isprime`
+        confirmation on the same deterministic path, and the sweet-spot closed form
+        locks confirmed primes to `Z = 1.0`.
         """
         return float(self._proxy(n)["z_hat"])
 
@@ -301,7 +343,9 @@ class CDLPrimeGeodesicPrefilter:
         public_exponent: int | None = None,
         excluded_values: set[int] | None = None,
     ) -> bool:
-        """Return True when the candidate survives the band test and fixed-base MR."""
+        """Return True when the candidate survives the band test and final confirmation."""
+        if public_exponent is not None:
+            validate_public_exponent(public_exponent)
         if not self.is_prime_candidate(n):
             return False
         if excluded_values is not None and n in excluded_values:
@@ -309,7 +353,9 @@ class CDLPrimeGeodesicPrefilter:
         # The exponent coprimality check is cheaper than a Miller-Rabin round.
         if public_exponent is not None and math.gcd(n - 1, public_exponent) != 1:
             return False
-        return miller_rabin_fixed_bases(n, self.mr_bases)
+        if not miller_rabin_fixed_bases(n, self.mr_bases):
+            return False
+        return bool(isprime(n))
 
     def _next_odd_candidate(self) -> int:
         """Yield the next deterministic odd candidate for this prefilter instance."""
@@ -331,7 +377,9 @@ class CDLPrimeGeodesicPrefilter:
         public_exponent: int | None = None,
         excluded_values: set[int] | None = None,
     ) -> int:
-        """Generate a deterministic probable prime with CDL in front of Miller-Rabin."""
+        """Generate a deterministic prime with CDL in front of final confirmation."""
+        if public_exponent is not None:
+            validate_public_exponent(public_exponent)
         while True:
             candidate = self._next_odd_candidate()
             if self.is_probable_prime(
@@ -348,6 +396,7 @@ def generate_rsa_prime(
     public_exponent: int = 65537,
 ) -> int:
     """Generate one deterministic RSA prime with the CDL geodesic prefilter."""
+    validate_public_exponent(public_exponent)
     prefilter = CDLPrimeGeodesicPrefilter(bit_length=bit_length, namespace=namespace)
     return prefilter.generate_prime(public_exponent=public_exponent)
 
@@ -360,7 +409,9 @@ __all__ = [
     "SWEET_SPOT_V",
     "WheelPrimeTable",
     "deterministic_odd_candidate",
+    "get_cached_wheel_prime_table",
     "generate_rsa_prime",
     "miller_rabin_fixed_bases",
     "sieve_primes",
+    "validate_public_exponent",
 ]

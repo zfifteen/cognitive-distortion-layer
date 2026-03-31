@@ -91,7 +91,7 @@ likely_primes, likely_composites = cdl.prime_diagnostic_prefilter(candidates)
 RSA, Diffie-Hellman, and ECC key generation spend most of their search time on composite candidates that never need a full Miller-Rabin path.
 
 ### Solution with the Sweet-Spot Band
-Use the deterministic geodesic prefilter in `src/python/cdl_prime_geodesic_prefilter.py` to keep candidates on the sweet-spot band at `v = e² / 2`, reject composites as soon as a concrete factor appears in the gated prime tables, and run fixed-base Miller-Rabin only on survivors.
+Use the deterministic geodesic prefilter in `src/python/cdl_prime_geodesic_prefilter.py` to keep candidates on the sweet-spot band at `v = e² / 2`, reject composites as soon as a concrete factor appears in the gated prime tables, and run fixed-base Miller-Rabin plus final `sympy.isprime` confirmation on survivors.
 
 ### Workflow
 
@@ -123,7 +123,7 @@ assert math.isclose(q_prefilter.proxy_z(q), 1.0, abs_tol=1e-12)
 
 - The gated prime tables strip easy composites before the expensive survivor regime.
 - The sweet-spot closed form keeps the prime class locked to `Z(p) = 1.0`.
-- `generate_prime()` preserves the benchmarked contract: CDL geodesic prefilter first, fixed-base Miller-Rabin second.
+- `generate_prime()` preserves the benchmarked search shape: CDL geodesic prefilter first, fixed-base Miller-Rabin second, final primality confirmation last.
 
 ### When to use
 
