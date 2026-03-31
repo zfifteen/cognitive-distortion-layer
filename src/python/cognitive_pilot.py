@@ -13,9 +13,9 @@ from typing import Iterable
 import numpy as np
 from scipy import stats
 
-from . import core as cdl
-from .continuous import ContinuousVRecovery
-from .inference import VRecovery
+import cdl
+from cdl_continuous import ContinuousVRecovery
+from v_recovery import VRecovery
 
 
 DEFAULT_STYLE_THRESHOLD = 1.2

@@ -28,16 +28,16 @@ pip install numpy
 
 ```bash
 # Basic usage (n = 2-50)
-python curvature_gist.py
+python scripts/demos/curvature_gist.py
 
 # Extended analysis
-python curvature_gist.py --max-n 10000
+python scripts/demos/curvature_gist.py --max-n 10000
 
 # Custom v-parameter for Z-transformation
-python curvature_gist.py --max-n 1000 --v-param 0.5
+python scripts/demos/curvature_gist.py --max-n 1000 --v-param 0.5
 
 # Control bootstrap samples
-python curvature_gist.py --bootstrap-samples 500
+python scripts/demos/curvature_gist.py --bootstrap-samples 500
 ```
 
 ### As a Module

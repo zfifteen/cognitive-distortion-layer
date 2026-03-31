@@ -9,8 +9,9 @@ Demonstrate the core CDL insight:
 3. Under that threshold, false positives from divisor class d are confined to:
    n <= N^(2/d)
 
-This script validates those claims against the repository's real cdl.py
-implementation and prints the observed behavior on a target range.
+This script validates those claims against the repository's canonical
+`src/python/cdl.py` implementation and prints the observed behavior on a target
+range.
 """
 
 from __future__ import annotations
@@ -23,9 +24,10 @@ from pathlib import Path
 from typing import Dict, Iterable, List, Tuple
 
 
-REPO_ROOT = Path(__file__).resolve().parents[1]
-if str(REPO_ROOT) not in sys.path:
-    sys.path.insert(0, str(REPO_ROOT))
+REPO_ROOT = Path(__file__).resolve().parents[2]
+SOURCE_DIR = REPO_ROOT / "src" / "python"
+if str(SOURCE_DIR) not in sys.path:
+    sys.path.insert(0, str(SOURCE_DIR))
 
 import cdl
 

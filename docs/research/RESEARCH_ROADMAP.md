@@ -11,7 +11,7 @@
 - [ ] Move cognitive-number-theory-main out of archive into a dedicated active repo
 - [ ] Commit the revised AGENTS.md (with threshold-invariance and scaffolding-boundary additions)
 - [ ] Commit the Codex-generated executive_summary.md (with the three recommended edits applied)
-- [ ] Run full test suite: `python test_cdl.py` and `python baseline_report.py` — confirm all metrics reproduce
+- [ ] Run full test suite: `python tests/test_suite.py` and `python scripts/reports/baseline_report.py` — confirm all metrics reproduce
 - [ ] Create a ROADMAP.md in the repo root pointing to this document
 - [ ] Set up a dedicated Perplexity Space (done) and pin docs/specification/CDL_SPECIFICATION.md + artifacts/reports/baseline_report.json as sources
 
@@ -27,12 +27,12 @@ Codex found τ ≈ 2.5 gives 100% recall and 98.3% precision on that range.
 This is a threshold configuration problem, not a signal problem.
 
 Tasks:
-- [ ] Implement `find_adaptive_threshold(n_min, n_max)` in cdl.py — fits τ on a seed window, reports optimal value
+- [ ] Implement `find_adaptive_threshold(n_min, n_max)` in `src/python/cdl.py` — fits τ on a seed window, reports optimal value
 - [ ] Generate a threshold map: τ_optimal vs. log(n_range_midpoint) for ranges [2–49], [50–999], [1K–9.99K], [10K–99.9K]
 - [ ] Characterize the false positive population — confirm Codex's finding that FPs are semiprimes and prime squares
-- [ ] Document the range-adaptive protocol in CDL_SPECIFICATION.md (replaces the current τ = 1.5 universal claim)
-- [ ] Update INTEGRATION.md Port 1 to show range-aware prefilter usage
-- [ ] Add threshold_map.csv to the repository
+- [ ] Document the range-adaptive protocol in docs/specification/CDL_SPECIFICATION.md (replaces the current τ = 1.5 universal claim)
+- [ ] Update docs/specification/INTEGRATION.md Port 1 to show range-aware prefilter usage
+- [ ] Add data/reference/threshold_map.csv to the repository
 
 **LLM role:** Use ChatGPT Pro o3 (code interpreter) for the threshold map generation and FP characterization.
 **Exit criterion:** τ = 1.5 universal claim retired; adaptive protocol documented and tested.
@@ -43,15 +43,15 @@ Tasks:
 **Goal:** Repair the known issues in helper scripts so the full codebase matches the CDL core's quality level.
 
 Issues identified by Codex:
-1. main.py — ML validation has label/feature misalignment; n included as raw feature
-2. qmc_sampling_bias() in cdl.py — partial-bias branch collapses to full sort for any nonzero value
-3. baseline_report.py ablation — uses synthetic n² signal; understates the normalization's real-world relevance
+1. scripts/demos/main.py — ML validation has label/feature misalignment; n included as raw feature
+2. `qmc_sampling_bias()` in `src/python/cdl.py` — partial-bias branch collapses to full sort for any nonzero value
+3. scripts/reports/baseline_report.py ablation — uses synthetic n² signal; understates the normalization's real-world relevance
 
 Tasks:
-- [ ] Fix main.py ML validation: remove n as raw feature, align label generation with feature construction
+- [ ] Fix scripts/demos/main.py ML validation: remove n as raw feature, align label generation with feature construction
 - [ ] Fix qmc_sampling_bias(): implement true partial bias (weighted blend of sorted and random order)
-- [ ] Redesign the ablation in baseline_report.py: replace n² synthetic signal with a real-world-like signal (e.g., sampled from results_load_*.csv data)
-- [ ] Re-run baseline_report.py and confirm metrics hold or improve
+- [ ] Redesign the ablation in scripts/reports/baseline_report.py: replace n² synthetic signal with a real-world-like signal (e.g., sampled from data/simulated/results_load_*.csv data)
+- [ ] Re-run scripts/reports/baseline_report.py and confirm metrics hold or improve
 - [ ] Add regression tests for qmc_sampling_bias() behavior at bias_strength = 0, 0.5, 1.0
 
 **Exit criterion:** All three issues resolved, test suite still green, no regression in validated metrics.

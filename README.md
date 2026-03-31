@@ -6,7 +6,7 @@
 
 This repository presents a theoretical and computational framework for analyzing discrete integer sequences through a geometry-inspired "curvature" model. By drawing a pedagogical analogy to relativistic distortions, we define a **forward diagnostic map** that highlights structural irregularities—especially those arising from divisor density. This model is intended for **structural analysis**, not for blind inversion of unknown values.
 
-**🆕 The Cognitive Distortion Layer (CDL)** standardizes κ(n) as the shared curvature signal across the Z Framework, providing unified primitives for prime diagnostics, QMC sampling, and signal normalization. See [`docs/specification/CDL_SPECIFICATION.md`](docs/specification/CDL_SPECIFICATION.md) and [`docs/specification/INTEGRATION.md`](docs/specification/INTEGRATION.md) for details.
+**🆕 The Cognitive Distortion Layer (CDL)** standardizes κ(n) as the shared curvature signal across the Z Framework, providing unified primitives for prime diagnostics, QMC sampling, and signal normalization. Source modules now live under [`src/python/`](src/python), with specifications in [`docs/specification/CDL_SPECIFICATION.md`](docs/specification/CDL_SPECIFICATION.md) and [`docs/specification/INTEGRATION.md`](docs/specification/INTEGRATION.md).
 
 ## Key Concepts
 
@@ -66,18 +66,15 @@ These results demonstrate that primes appear as "minimal-curvature geodesics" wi
 ## Implementation
 
 * **Language**: Python 3
-* **Public Entry Points**:
+* **Source Layout**:
 
-  * **`cdl.py`**: **Cognitive Distortion Layer** - Production-ready module with standardized κ(n) primitives
-  * `baseline_report.py`: Validation suite for CDL (seed + hold-out tests)
-  * `test_cdl.py`: Canonical test runner
-  * `main.py`: Compatibility entrypoint for the cognitive-frame-shift demo
-  * `generate_plots.py`: Compatibility entrypoint for white-paper plots
-  * `generate_cdl_dashboards.py`: Compatibility entrypoint for validation dashboards
+  * `src/python/cdl.py`: Canonical CDL primitives
+  * `src/python/cdl_continuous.py`: Continuous-domain CDL extensions
+  * `src/python/v_recovery.py`: Traversal-rate inference
+  * `src/python/cognitive_pilot.py`: Sprint 6 cognitive pilot pipeline
 
-* **Implementation Layout**:
+* **Repository Layout**:
 
-  * `cdl_impl/`: Internal package for the canonical root shims
   * `docs/`: Specifications, summaries, roadmap, and concept notes
   * `data/`: Reference data and generated simulation traces
   * `artifacts/`: Generated reports and figures
@@ -111,20 +108,20 @@ normalized_signals = cdl.signal_normalize_pipeline(raw_signals, v=1.0)
 
 ### Quick Start with Self-Contained Gist
 
-The `curvature_gist.py` script provides a standalone implementation with **only numpy** as a dependency:
+The standalone gist lives at `scripts/demos/curvature_gist.py` and has **only numpy** as a dependency:
 
 ```bash
 # Basic usage (n = 2-50, default parameters)
-python curvature_gist.py
+python scripts/demos/curvature_gist.py
 
 # Extended analysis with 10,000 numbers
-python curvature_gist.py --max-n 10000
+python scripts/demos/curvature_gist.py --max-n 10000
 
 # Custom v-parameter for Z-transformation
-python curvature_gist.py --max-n 1000 --v-param 0.5
+python scripts/demos/curvature_gist.py --max-n 1000 --v-param 0.5
 
 # Fewer bootstrap samples for faster execution
-python curvature_gist.py --max-n 100 --bootstrap-samples 500
+python scripts/demos/curvature_gist.py --max-n 100 --bootstrap-samples 500
 ```
 
 **Key Features**:
@@ -136,23 +133,11 @@ python curvature_gist.py --max-n 100 --bootstrap-samples 500
 
 The gist can also be imported as a module:
 
-```python
-import curvature_gist as cg
-
-# Compute curvature for specific numbers
-print(cg.kappa(7))  # Prime: low curvature
-print(cg.kappa(12)) # Composite: high curvature
-
-# Run full analysis
-results = cg.run_analysis(max_n=100, v_param=1.0)
-cg.print_results(results)
-```
-
 ### Full Model Example
 
 ```bash
 # Run complete cognitive model with visualizations
-python main.py
+python scripts/demos/main.py
 ```
 
 Generates curvature statistics, writes figures into `artifacts/figures/`, and writes CSV traces into `data/simulated/`.
@@ -161,13 +146,16 @@ Generates curvature statistics, writes figures into `artifacts/figures/`, and wr
 
 ```bash
 # Run CDL test suite
-python test_cdl.py
+python tests/test_suite.py
 
 # Generate baseline validation report
-python baseline_report.py
+python scripts/reports/baseline_report.py
 
 # Generate visualization dashboards
-python generate_cdl_dashboards.py
+python scripts/dashboards/generate_cdl_dashboards.py
+
+# Run the full Sprint 1–6 local reproduction
+python scripts/reproduce_sprints.py
 ```
 
 **Validation Results:**

@@ -14,8 +14,9 @@ from pathlib import Path
 import numpy as np
 
 ROOT = Path(__file__).resolve().parents[1]
-if str(ROOT) not in sys.path:
-    sys.path.insert(0, str(ROOT))
+SOURCE_DIR = ROOT / "src" / "python"
+if str(SOURCE_DIR) not in sys.path:
+    sys.path.insert(0, str(SOURCE_DIR))
 
 import cdl
 from cdl_continuous import (
@@ -373,9 +374,9 @@ def main() -> int:
     analytic_results = build_analytic_artifacts(ROOT / "experiments/analytic_connections")
     build_continuous_artifacts(ROOT / "experiments/continuous_extension", analytic_results)
 
-    run_command([sys.executable, "baseline_report.py"])
-    run_command([sys.executable, "main.py"])
-    run_command([sys.executable, "generate_plots.py"])
+    run_command([sys.executable, "scripts/reports/baseline_report.py"])
+    run_command([sys.executable, "scripts/demos/main.py"])
+    run_command([sys.executable, "scripts/demos/generate_plots.py"])
 
     run_command([sys.executable, "experiments/cognitive_pilot/benchmark.py"])
 

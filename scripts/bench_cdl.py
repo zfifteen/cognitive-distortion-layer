@@ -14,8 +14,10 @@ from pathlib import Path
 import numpy as np
 from sympy import divisors, isprime
 
-# Add parent directory to path to import cdl
-sys.path.insert(0, str(Path(__file__).parent.parent))
+# Add source directory to path to import cdl
+ROOT = Path(__file__).resolve().parent.parent
+SOURCE_DIR = ROOT / "src" / "python"
+sys.path.insert(0, str(SOURCE_DIR))
 
 
 def divisor_count(n: int) -> int:

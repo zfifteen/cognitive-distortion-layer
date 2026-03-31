@@ -18,8 +18,9 @@ from scipy import stats
 
 ROOT = Path(__file__).resolve().parents[2]
 OUTPUT_DIR = ROOT / "experiments" / "cognitive_pilot"
-if str(ROOT) not in sys.path:
-    sys.path.insert(0, str(ROOT))
+SOURCE_DIR = ROOT / "src" / "python"
+if str(SOURCE_DIR) not in sys.path:
+    sys.path.insert(0, str(SOURCE_DIR))
 
 
 from cognitive_pilot import CognitivePilot

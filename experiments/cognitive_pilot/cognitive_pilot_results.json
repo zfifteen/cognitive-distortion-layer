@@ -11,7 +11,7 @@
   "style_accuracy": 1.0,
   "compression_correlation": 0.9802821749311332,
   "hybrid_relative_improvement_pct": 88.10395412288516,
-  "runtime_seconds": 1.8261098861694336,
+  "runtime_seconds": 1.505661964416504,
   "group_summary": {
     "sharp geodesic": {
       "mean_v_recovered": 0.796669438626974,

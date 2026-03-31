@@ -10,13 +10,13 @@ Successfully implemented the Cognitive Distortion Layer (CDL) as the standardize
 ## Deliverables
 
 ### 1. Core Documentation
-- **`CDL_SPECIFICATION.md`** (5.8 KB)
+- **`docs/specification/CDL_SPECIFICATION.md`**
   - Complete one-pager specification
   - κ(n), threshold classifier, Z-normalization definitions
   - Parameter guidelines and validation protocols
   - Risk mitigation strategies
 
-- **`INTEGRATION.md`** (11 KB)
+- **`docs/specification/INTEGRATION.md`**
   - Three integration port examples with code
   - Prime diagnostics prefilter
   - QMC/Factorization sampling
@@ -24,21 +24,21 @@ Successfully implemented the Cognitive Distortion Layer (CDL) as the standardize
   - Performance characteristics and best practices
 
 ### 2. Implementation
-- **`cdl.py`** (14 KB)
+- **`src/python/cdl.py`**
   - Production-ready module
   - Three core primitives with documentation
   - Integration helper functions
   - Utility functions for statistics
 
 ### 3. Validation & Testing
-- **`baseline_report.py`** (14 KB)
+- **`scripts/reports/baseline_report.py`**
   - Seed set validation (n=2-49)
   - Hold-out validation (n=50-10,000)
   - Ablation study
   - Stability check
-  - Results saved to `baseline_report.json` (1.4 KB)
+  - Results saved to `artifacts/reports/baseline_report.json`
 
-- **`test_cdl.py`** (13 KB)
+- **`tests/test_suite.py`**
   - Comprehensive test suite
   - Tests for all primitives
   - Property validation
@@ -46,7 +46,7 @@ Successfully implemented the Cognitive Distortion Layer (CDL) as the standardize
   - **All tests passing ✓**
 
 ### 4. Visualization Dashboards
-- **`generate_cdl_dashboards.py`** (16 KB)
+- **`scripts/dashboards/generate_cdl_dashboards.py`**
   - Automated dashboard generation
   - 5 visualization files (2.9 MB total):
     - `cdl_kappa_histograms.png` (228 KB)
@@ -183,13 +183,13 @@ normalized = cdl.signal_normalize_pipeline(signals, v=1.0)
 ## Files Added/Modified
 
 **New files (12):**
-- CDL_SPECIFICATION.md
-- INTEGRATION.md
-- cdl.py
-- baseline_report.py
-- baseline_report.json
-- test_cdl.py
-- generate_cdl_dashboards.py
+- docs/specification/CDL_SPECIFICATION.md
+- docs/specification/INTEGRATION.md
+- src/python/cdl.py
+- scripts/reports/baseline_report.py
+- artifacts/reports/baseline_report.json
+- tests/test_suite.py
+- scripts/dashboards/generate_cdl_dashboards.py
 - 5 × dashboard PNG files
 
 **Modified files (1):**

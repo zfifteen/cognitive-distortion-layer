@@ -12,10 +12,10 @@ Requirements:
     - numpy
 
 Usage:
-    python curvature_gist.py [--max-n MAX_N] [--v-param V] [--bootstrap-samples N]
+    python scripts/demos/curvature_gist.py [--max-n MAX_N] [--v-param V] [--bootstrap-samples N]
     
 Example:
-    python curvature_gist.py --max-n 10000 --v-param 1.0 --bootstrap-samples 1000
+    python scripts/demos/curvature_gist.py --max-n 10000 --v-param 1.0 --bootstrap-samples 1000
 """
 
 import math

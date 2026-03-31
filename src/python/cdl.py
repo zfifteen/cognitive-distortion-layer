@@ -11,7 +11,7 @@ Core primitives:
 3. z_normalize(n, v) - Z-transformation for scale normalization
 
 References:
-- CDL_SPECIFICATION.md for detailed protocol
+- docs/specification/CDL_SPECIFICATION.md for detailed protocol
 - Baseline: n=2-49, prime avg ~0.739, composite avg ~2.252, accuracy ~83%
 """
 

@@ -10,7 +10,7 @@ def num_divisors(n):
     return len(divisors(n))
 
 def kappa(n, e2=math.e**2):
-    """Curvature κ(n) = d(n) · ln(n) / e² — exact canonical signal from cdl.py."""
+    """Curvature κ(n) = d(n) · ln(n) / e² — exact canonical signal from src/python/cdl.py."""
     if n < 2:
         return 0.0
     return num_divisors(n) * np.log(n) / e2

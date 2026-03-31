@@ -328,8 +328,8 @@ My work demonstrates that mathematical perception can be understood through geom
 
 The complete experimental framework is available in the accompanying files:
 
-- `main.py`: Compatibility entrypoint for the complete CognitiveModel simulation and exports
-- `generate_plots.py`: Compatibility entrypoint for publication-quality plot generation
+- `scripts/demos/main.py`: Complete CognitiveModel simulation and data export workflow
+- `scripts/demos/generate_plots.py`: Publication-quality plot generation
 
 ## Appendix B: Experimental Data and Visualizations
 

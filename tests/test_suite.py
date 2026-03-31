@@ -7,13 +7,20 @@ Tests core primitives:
 2. Threshold-based classification
 3. Z-normalization
 
-Run with: python3 test_cdl.py
+Run with: python3 tests/test_suite.py
 """
 
-import cdl
 import math
 import numpy as np
+import sys
+from pathlib import Path
 
+ROOT = Path(__file__).resolve().parents[1]
+SOURCE_DIR = ROOT / "src" / "python"
+if str(SOURCE_DIR) not in sys.path:
+    sys.path.insert(0, str(SOURCE_DIR))
+
+import cdl
 from cognitive_pilot import CognitivePilot
 from cdl_continuous import ContinuousVRecovery, generate_continuous_z_sequence, hybrid_classify, kappa_smooth, z_normalize_continuous
 from v_recovery import VRecovery, generate_z_sequence

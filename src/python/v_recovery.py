@@ -20,7 +20,7 @@ from typing import Dict, Iterable, Literal, Tuple
 import numpy as np
 from scipy import stats
 
-from . import core as cdl
+import cdl
 
 SequenceType = Literal["random", "consecutive", "prime_biased", "composite_heavy"]
 RecoveryMethod = Literal["moment_match", "mle", "fingerprint"]

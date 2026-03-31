@@ -406,4 +406,4 @@ def validate_v_parameter(v):
 For detailed mathematics and validation results, see:
 - `docs/specification/CDL_SPECIFICATION.md` - Core definitions and protocols
 - `artifacts/reports/baseline_report.json` - Empirical validation data
-- `cdl.py` - Reference implementation
+- `src/python/cdl.py` - Reference implementation

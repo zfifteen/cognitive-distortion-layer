@@ -12,14 +12,20 @@ Requires: matplotlib, numpy
 """
 
 import math
+import sys
 from pathlib import Path
 import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import numpy as np
-import cdl
 
 ROOT = Path(__file__).resolve().parents[2]
+SOURCE_DIR = ROOT / "src" / "python"
+if str(SOURCE_DIR) not in sys.path:
+    sys.path.insert(0, str(SOURCE_DIR))
+
+import cdl
+
 FIGURES_DIR = ROOT / "artifacts" / "figures"
 
 

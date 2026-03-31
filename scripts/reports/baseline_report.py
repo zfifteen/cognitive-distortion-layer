@@ -11,11 +11,17 @@ This report establishes baseline metrics for κ(n) curvature signal:
 
 import json
 import csv
+import sys
 from pathlib import Path
 from typing import Dict, List, Tuple
-import cdl
 
 ROOT = Path(__file__).resolve().parents[2]
+SOURCE_DIR = ROOT / "src" / "python"
+if str(SOURCE_DIR) not in sys.path:
+    sys.path.insert(0, str(SOURCE_DIR))
+
+import cdl
+
 DATA_SIMULATED_DIR = ROOT / "data" / "simulated"
 DATA_REFERENCE_DIR = ROOT / "data" / "reference"
 REPORTS_DIR = ROOT / "artifacts" / "reports"

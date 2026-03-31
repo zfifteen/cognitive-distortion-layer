@@ -12,8 +12,8 @@ from typing import Iterable
 import numpy as np
 import sympy as sp
 
-from . import core as cdl
-from .inference import InferenceResult, VRecovery
+import cdl
+from v_recovery import InferenceResult, VRecovery
 
 
 gamma = float(sp.EulerGamma)
