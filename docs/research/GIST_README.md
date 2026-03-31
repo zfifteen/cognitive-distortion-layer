@@ -145,7 +145,7 @@ Z-Transformation Parameter:
 
 ### CSV Output
 
-File: `kappas.csv`
+File: `data/reference/kappas.csv`
 
 ```csv
 n,kappa,z_transform

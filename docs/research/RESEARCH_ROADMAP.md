@@ -13,7 +13,7 @@
 - [ ] Commit the Codex-generated executive_summary.md (with the three recommended edits applied)
 - [ ] Run full test suite: `python test_cdl.py` and `python baseline_report.py` — confirm all metrics reproduce
 - [ ] Create a ROADMAP.md in the repo root pointing to this document
-- [ ] Set up a dedicated Perplexity Space (done) and pin CDL_SPECIFICATION.md + baseline_report.json as sources
+- [ ] Set up a dedicated Perplexity Space (done) and pin docs/specification/CDL_SPECIFICATION.md + artifacts/reports/baseline_report.json as sources
 
 **Exit criterion:** Green test suite, revised docs committed, repo publicly visible.
 

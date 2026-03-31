@@ -404,6 +404,6 @@ def validate_v_parameter(v):
 **Key Principle:** κ(n) provides a simple, interpretable geometric signal that makes downstream tools agree more often and work more efficiently.
 
 For detailed mathematics and validation results, see:
-- `CDL_SPECIFICATION.md` - Core definitions and protocols
-- `baseline_report.json` - Empirical validation data
+- `docs/specification/CDL_SPECIFICATION.md` - Core definitions and protocols
+- `artifacts/reports/baseline_report.json` - Empirical validation data
 - `cdl.py` - Reference implementation

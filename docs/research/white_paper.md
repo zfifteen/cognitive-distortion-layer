@@ -328,21 +328,21 @@ My work demonstrates that mathematical perception can be understood through geom
 
 The complete experimental framework is available in the accompanying files:
 
-- `main.py`: Complete CognitiveModel implementation with all mathematical transformations, simulation and visualization functions, data export capabilities, and machine learning validation experiments
-- `generate_plots.py`: Visualization generation script for creating publication-quality plots and summary tables
+- `main.py`: Compatibility entrypoint for the complete CognitiveModel simulation and exports
+- `generate_plots.py`: Compatibility entrypoint for publication-quality plot generation
 
 ## Appendix B: Experimental Data and Visualizations
 
 Detailed experimental results and visualizations are provided:
 
 **Data Files:**
-- `results_load_0.csv`: Baseline cognitive load experiments (Load = 0.0)
-- `results_load_30.csv`: Moderate cognitive load experiments (Load = 0.3)
-- `results_load_70.csv`: High cognitive load experiments (Load = 0.7)
+- `data/simulated/results_load_0.csv`: Baseline cognitive load experiments (Load = 0.0)
+- `data/simulated/results_load_30.csv`: Moderate cognitive load experiments (Load = 0.3)
+- `data/simulated/results_load_70.csv`: High cognitive load experiments (Load = 0.7)
 
 **Visualization Files:**
-- `curvature_analysis.png`: Curvature distribution plots showing prime vs composite separation
-- `load_effects.png`: Cognitive load effect analysis with exponential scaling demonstration
+- `artifacts/figures/curvature_analysis.png`: Curvature distribution plots showing prime vs composite separation
+- `artifacts/figures/load_effects.png`: Cognitive load effect analysis with exponential scaling demonstration
 
 Each CSV file contains columns for: n, Z(n), Perceived, Distortion, Curvature
 

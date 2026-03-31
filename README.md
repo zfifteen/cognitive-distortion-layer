@@ -6,7 +6,7 @@
 
 This repository presents a theoretical and computational framework for analyzing discrete integer sequences through a geometry-inspired "curvature" model. By drawing a pedagogical analogy to relativistic distortions, we define a **forward diagnostic map** that highlights structural irregularities—especially those arising from divisor density. This model is intended for **structural analysis**, not for blind inversion of unknown values.
 
-**🆕 The Cognitive Distortion Layer (CDL)** standardizes κ(n) as the shared curvature signal across the Z Framework, providing unified primitives for prime diagnostics, QMC sampling, and signal normalization. See [`CDL_SPECIFICATION.md`](CDL_SPECIFICATION.md) and [`INTEGRATION.md`](INTEGRATION.md) for details.
+**🆕 The Cognitive Distortion Layer (CDL)** standardizes κ(n) as the shared curvature signal across the Z Framework, providing unified primitives for prime diagnostics, QMC sampling, and signal normalization. See [`docs/specification/CDL_SPECIFICATION.md`](docs/specification/CDL_SPECIFICATION.md) and [`docs/specification/INTEGRATION.md`](docs/specification/INTEGRATION.md) for details.
 
 ## Key Concepts
 
@@ -66,14 +66,24 @@ These results demonstrate that primes appear as "minimal-curvature geodesics" wi
 ## Implementation
 
 * **Language**: Python 3
-* **Main Scripts**:
+* **Public Entry Points**:
 
   * **`cdl.py`**: **Cognitive Distortion Layer** - Production-ready module with standardized κ(n) primitives
-  * `main.py`: Full cognitive model simulation with visualization
-  * `curvature_gist.py`: Self-contained gist for curvature computation and classification
-  * `generate_plots.py`: Generate plots for white paper analysis
   * `baseline_report.py`: Validation suite for CDL (seed + hold-out tests)
-  * `generate_cdl_dashboards.py`: Generate visualization dashboards
+  * `test_cdl.py`: Canonical test runner
+  * `main.py`: Compatibility entrypoint for the cognitive-frame-shift demo
+  * `generate_plots.py`: Compatibility entrypoint for white-paper plots
+  * `generate_cdl_dashboards.py`: Compatibility entrypoint for validation dashboards
+
+* **Implementation Layout**:
+
+  * `cdl_impl/`: Internal package for the canonical root shims
+  * `docs/`: Specifications, summaries, roadmap, and concept notes
+  * `data/`: Reference data and generated simulation traces
+  * `artifacts/`: Generated reports and figures
+  * `experiments/`: Research sprint outputs and benchmarks
+  * `scripts/`: Demo, dashboard, report, and reproduction utilities
+  * `tests/`: Reorganized pytest suite
 
 ### Quick Start with CDL
 
@@ -97,7 +107,7 @@ biased_candidates = cdl.qmc_sampling_bias(candidates, bias_strength=0.8)
 normalized_signals = cdl.signal_normalize_pipeline(raw_signals, v=1.0)
 ```
 
-**See [`INTEGRATION.md`](INTEGRATION.md) for complete integration examples.**
+**See [`docs/specification/INTEGRATION.md`](docs/specification/INTEGRATION.md) for complete integration examples.**
 
 ### Quick Start with Self-Contained Gist
 
@@ -121,7 +131,7 @@ python curvature_gist.py --max-n 100 --bootstrap-samples 500
 - Instant computation for custom n ranges
 - Built-in primality checks and bootstrap CI reporting
 - Extensible v-parameter tuning for Z-normalization
-- Outputs `kappas.csv` with (n, κ(n), Z(n)) data
+- Outputs `data/reference/kappas.csv` with (n, κ(n), Z(n)) data
 - ~83% classification accuracy for prime vs composite
 
 The gist can also be imported as a module:
@@ -145,7 +155,7 @@ cg.print_results(results)
 python main.py
 ```
 
-Generates curvature statistics, distortion plots, and CSV exports.
+Generates curvature statistics, writes figures into `artifacts/figures/`, and writes CSV traces into `data/simulated/`.
 
 ### Validation & Testing
 
@@ -165,6 +175,8 @@ python generate_cdl_dashboards.py
 - Hold-out (n=50-10K): Accuracy = 88.2%, maintains separation pattern
 - Z-normalization: 99.2% variance reduction
 - All acceptance criteria met ✓
+
+The baseline report is written to `artifacts/reports/baseline_report.json`.
 
 ## Limitations & Scope
 

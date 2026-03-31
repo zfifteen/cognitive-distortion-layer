@@ -334,7 +334,7 @@ def run_command(args: list[str]) -> None:
 
 def main() -> int:
     os.chdir(ROOT)
-    write_threshold_map(ROOT / "threshold_map.csv")
+    write_threshold_map(ROOT / "data" / "reference" / "threshold_map.csv")
 
     run_command(
         [
