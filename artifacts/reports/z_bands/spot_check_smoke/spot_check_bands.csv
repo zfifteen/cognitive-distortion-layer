@@ -1,0 +1,7 @@
+band_digits,samples_requested,samples_built,factors_found,factor_missing,smallest_factor_found,status
+1,2,2,2,0,3,ok
+2,2,2,2,0,3,ok
+3,2,2,2,0,3,ok
+4,2,2,2,0,3,ok
+5,2,2,2,0,3,ok
+6,2,2,2,0,3,ok
