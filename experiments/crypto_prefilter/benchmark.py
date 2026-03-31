@@ -34,6 +34,8 @@ DEFAULT_MR_BASES = [2, 3, 5, 7, 11, 13, 17, 19]
 DEFAULT_NAMESPACE = "cdl-crypto-prefilter"
 DEFAULT_PROXY_TRIAL_PRIME_LIMIT = 200003
 DEFAULT_PROXY_CHUNK_SIZE = 256
+DEFAULT_PROXY_TAIL_PRIME_LIMIT = 500009
+DEFAULT_PROXY_TAIL_CHUNK_SIZE = 256
 SWEET_SPOT_V = math.e ** 2 / 2.0
 FIXED_POINT_TOLERANCE = 1e-12
 LOG_FLOAT_MIN = math.log(sys.float_info.min)
@@ -167,15 +169,22 @@ def sieve_primes(limit: int) -> List[int]:
 class WheelPrimeTable:
     """Precomputed deterministic prime table with chunked GCD batches for fast rejection."""
 
-    def __init__(self, limit: int, chunk_size: int) -> None:
+    def __init__(self, limit: int, chunk_size: int, start_exclusive: int = 2) -> None:
         if limit < 3:
             raise ValueError("prime table limit must be at least 3")
         if chunk_size < 1:
             raise ValueError("chunk_size must be at least 1")
+        if start_exclusive >= limit:
+            raise ValueError("start_exclusive must be smaller than limit")
 
         self.limit = limit
         self.chunk_size = chunk_size
-        self.primes = [prime for prime in sieve_primes(limit) if prime != 2]
+        self.start_exclusive = start_exclusive
+        self.primes = [
+            prime
+            for prime in sieve_primes(limit)
+            if prime != 2 and prime > start_exclusive
+        ]
         self.chunks: List[List[int]] = []
         self.chunk_products: List[int] = []
 
@@ -218,13 +227,14 @@ class WheelPrimeTable:
 def cheap_cdl_proxy(
     n: int,
     prime_table: WheelPrimeTable,
+    tail_prime_table: WheelPrimeTable | None = None,
 ) -> Dict[str, float | int | bool | None]:
     """
-    Deterministic CDL proxy using a chunked small-prime divisor lower bound.
+    Deterministic CDL proxy using interval-split chunked prime tables.
 
-    This is the narrow deterministic slice of Path 2: reject candidates only when a
-    concrete small factor is found. When no small factor is found, the proxy leaves
-    the candidate on the prime band (`z_hat = 1.0`) and defers to Miller-Rabin.
+    This path rejects candidates only when a concrete factor is found in the primary
+    or tail interval. When no factor is found, the proxy leaves the candidate on the
+    prime band (`z_hat = 1.0`) and defers to Miller-Rabin.
     """
     if n < 2:
         return {
@@ -237,17 +247,23 @@ def cheap_cdl_proxy(
 
     original_n = n
     d_est, smallest_factor = prime_table.divisor_lower_bound(n)
+    factor_source = "primary"
+    if smallest_factor is None and tail_prime_table is not None:
+        d_est, smallest_factor = tail_prime_table.divisor_lower_bound(n)
+        factor_source = "tail"
     if smallest_factor is not None:
         log_z = (1.0 - d_est / 2.0) * math.log(original_n)
         z_hat = 0.0 if log_z < LOG_FLOAT_MIN else math.exp(log_z)
     else:
         z_hat = 1.0
+        factor_source = "survivor"
 
     return {
         "z_hat": z_hat,
         "d_est": d_est,
         "rejected": bool(z_hat < 1.0 - FIXED_POINT_TOLERANCE),
         "smallest_factor": smallest_factor,
+        "factor_source": factor_source,
         "residual_bits": original_n.bit_length(),
     }
 
@@ -388,6 +404,7 @@ def run_exact_calibration(
 def run_proxy_calibration(
     candidates: Sequence[int],
     prime_table: WheelPrimeTable,
+    tail_prime_table: WheelPrimeTable | None = None,
 ) -> Dict:
     """Benchmark the deterministic CDL proxy on the tractable calibration corpus."""
     proxy_durations_ns: List[int] = []
@@ -402,7 +419,7 @@ def run_proxy_calibration(
         truth_primes.append(truth_is_prime)
 
         start_ns = time.perf_counter_ns()
-        proxy = cheap_cdl_proxy(n, prime_table)
+        proxy = cheap_cdl_proxy(n, prime_table, tail_prime_table=tail_prime_table)
         proxy_durations_ns.append(time.perf_counter_ns() - start_ns)
 
         predicted_prime = not bool(proxy["rejected"])
@@ -424,6 +441,9 @@ def run_proxy_calibration(
         "trial_prime_limit": prime_table.limit,
         "trial_prime_count": len(prime_table.primes),
         "chunk_size": prime_table.chunk_size,
+        "tail_prime_limit": tail_prime_table.limit if tail_prime_table is not None else 0,
+        "tail_prime_count": len(tail_prime_table.primes) if tail_prime_table is not None else 0,
+        "tail_chunk_size": tail_prime_table.chunk_size if tail_prime_table is not None else 0,
         "fixed_points": fixed_points,
         "false_fixed_points": false_fixed_points,
         "strict_contractions": strict_contractions,
@@ -485,6 +505,7 @@ def run_crypto_control(
 def run_proxy_crypto_pipeline(
     candidates: Sequence[int],
     prime_table: WheelPrimeTable,
+    tail_prime_table: WheelPrimeTable | None,
     mr_bases: Sequence[int],
     truth_check: bool = False,
 ) -> Dict:
@@ -505,7 +526,7 @@ def run_proxy_crypto_pipeline(
             truth_primes.append(truth_is_prime)
 
         start_ns = time.perf_counter_ns()
-        proxy = cheap_cdl_proxy(n, prime_table)
+        proxy = cheap_cdl_proxy(n, prime_table, tail_prime_table=tail_prime_table)
         proxy_duration = time.perf_counter_ns() - start_ns
         proxy_durations_ns.append(proxy_duration)
 
@@ -538,6 +559,9 @@ def run_proxy_crypto_pipeline(
         "trial_prime_limit": prime_table.limit,
         "trial_prime_count": len(prime_table.primes),
         "chunk_size": prime_table.chunk_size,
+        "tail_prime_limit": tail_prime_table.limit if tail_prime_table is not None else 0,
+        "tail_prime_count": len(tail_prime_table.primes) if tail_prime_table is not None else 0,
+        "tail_chunk_size": tail_prime_table.chunk_size if tail_prime_table is not None else 0,
         "rejected_by_proxy": rejected_by_proxy,
         "rejection_rate": rejected_by_proxy / len(candidates),
         "survivors_to_miller_rabin": survivors,
@@ -604,7 +628,7 @@ def build_report_markdown(results: Dict) -> str:
         f"Date: {results['experiment_date']}",
         "",
         "This report benchmarks the exact sweet-spot CDL path where the current implementation is executable,",
-        "a deterministic CDL proxy backed by a chunked prime table,",
+        "a deterministic CDL proxy backed by interval-split chunked prime tables,",
         "and fixed-base Miller-Rabin on deterministic cryptographic-scale odd candidates.",
         "",
         "## Configuration",
@@ -618,6 +642,8 @@ def build_report_markdown(results: Dict) -> str:
         f"- `bonus_crypto_count`: {results['configuration']['bonus_crypto_count']}",
         f"- `proxy_trial_prime_limit`: {results['configuration']['proxy_trial_prime_limit']}",
         f"- `proxy_chunk_size`: {results['configuration']['proxy_chunk_size']}",
+        f"- `proxy_tail_prime_limit`: {results['configuration']['proxy_tail_prime_limit']}",
+        f"- `proxy_tail_chunk_size`: {results['configuration']['proxy_tail_chunk_size']}",
         f"- `miller_rabin_bases`: {results['configuration']['mr_bases']}",
         f"- `truth_check`: {results['configuration']['truth_check']}",
         "",
@@ -664,6 +690,9 @@ def build_report_markdown(results: Dict) -> str:
         f"| Trial prime limit | {proxy_calibration['trial_prime_limit']} |",
         f"| Trial prime count | {proxy_calibration['trial_prime_count']} |",
         f"| Chunk size | {proxy_calibration['chunk_size']} |",
+        f"| Tail prime limit | {proxy_calibration['tail_prime_limit']} |",
+        f"| Tail prime count | {proxy_calibration['tail_prime_count']} |",
+        f"| Tail chunk size | {proxy_calibration['tail_chunk_size']} |",
         f"| Fixed points | {proxy_calibration['fixed_points']} |",
         f"| Composite false fixed points | {proxy_calibration['false_fixed_points']} |",
         f"| Strict composite contractions | {proxy_calibration['strict_contractions']} |",
@@ -689,6 +718,9 @@ def build_report_markdown(results: Dict) -> str:
         f"| Trial prime limit | {proxy_crypto['trial_prime_limit']} |",
         f"| Trial prime count | {proxy_crypto['trial_prime_count']} |",
         f"| Chunk size | {proxy_crypto['chunk_size']} |",
+        f"| Tail prime limit | {proxy_crypto['tail_prime_limit']} |",
+        f"| Tail prime count | {proxy_crypto['tail_prime_count']} |",
+        f"| Tail chunk size | {proxy_crypto['tail_chunk_size']} |",
         f"| Rejected before Miller-Rabin | {proxy_crypto['rejected_by_proxy']} |",
         f"| Rejection rate | {proxy_crypto['rejection_rate']:.6%} |",
         f"| Survivors to Miller-Rabin | {proxy_crypto['survivors_to_miller_rabin']} |",
@@ -717,6 +749,9 @@ def build_report_markdown(results: Dict) -> str:
         f"| Trial prime limit | {bonus_proxy['trial_prime_limit'] if bonus_proxy is not None else 0} |",
         f"| Trial prime count | {bonus_proxy['trial_prime_count'] if bonus_proxy is not None else 0} |",
         f"| Chunk size | {bonus_proxy['chunk_size'] if bonus_proxy is not None else 0} |",
+        f"| Tail prime limit | {bonus_proxy['tail_prime_limit'] if bonus_proxy is not None else 0} |",
+        f"| Tail prime count | {bonus_proxy['tail_prime_count'] if bonus_proxy is not None else 0} |",
+        f"| Tail chunk size | {bonus_proxy['tail_chunk_size'] if bonus_proxy is not None else 0} |",
         f"| Rejected before Miller-Rabin | {bonus_proxy['rejected_by_proxy'] if bonus_proxy is not None else 0} |",
         f"| Rejection rate | {(bonus_proxy['rejection_rate'] if bonus_proxy is not None else 0.0):.6%} |",
         f"| Survivors to Miller-Rabin | {bonus_proxy['survivors_to_miller_rabin'] if bonus_proxy is not None else 0} |",
@@ -761,10 +796,15 @@ def run_benchmark(
     bonus_crypto_count: int,
     proxy_trial_prime_limit: int,
     proxy_chunk_size: int,
+    proxy_tail_prime_limit: int,
+    proxy_tail_chunk_size: int,
     mr_bases: Sequence[int],
     truth_check: bool,
 ) -> Dict:
     """Run the exact calibration and crypto control benchmark."""
+    if proxy_tail_prime_limit <= proxy_trial_prime_limit:
+        raise ValueError("proxy_tail_prime_limit must exceed proxy_trial_prime_limit")
+
     exact_candidates = deterministic_odd_candidates(exact_bits, exact_count)
     crypto_candidates = deterministic_odd_candidates(crypto_bits, crypto_count)
     bonus_crypto_candidates = (
@@ -776,9 +816,18 @@ def run_benchmark(
         limit=proxy_trial_prime_limit,
         chunk_size=proxy_chunk_size,
     )
+    tail_prime_table = WheelPrimeTable(
+        limit=proxy_tail_prime_limit,
+        chunk_size=proxy_tail_chunk_size,
+        start_exclusive=proxy_trial_prime_limit,
+    )
 
     exact_calibration = run_exact_calibration(exact_candidates, mr_bases=mr_bases)
-    proxy_calibration = run_proxy_calibration(exact_candidates, prime_table=prime_table)
+    proxy_calibration = run_proxy_calibration(
+        exact_candidates,
+        prime_table=prime_table,
+        tail_prime_table=tail_prime_table,
+    )
     crypto_control = run_crypto_control(
         crypto_candidates,
         mr_bases=mr_bases,
@@ -787,6 +836,7 @@ def run_benchmark(
     proxy_crypto_pipeline = run_proxy_crypto_pipeline(
         crypto_candidates,
         prime_table=prime_table,
+        tail_prime_table=tail_prime_table,
         mr_bases=mr_bases,
         truth_check=truth_check,
     )
@@ -803,6 +853,7 @@ def run_benchmark(
         run_proxy_crypto_pipeline(
             bonus_crypto_candidates,
             prime_table=prime_table,
+            tail_prime_table=tail_prime_table,
             mr_bases=mr_bases,
             truth_check=truth_check,
         )
@@ -822,6 +873,8 @@ def run_benchmark(
             "bonus_crypto_count": bonus_crypto_count,
             "proxy_trial_prime_limit": proxy_trial_prime_limit,
             "proxy_chunk_size": proxy_chunk_size,
+            "proxy_tail_prime_limit": proxy_tail_prime_limit,
+            "proxy_tail_chunk_size": proxy_tail_chunk_size,
             "mr_bases": list(mr_bases),
             "truth_check": truth_check,
         },
@@ -846,6 +899,8 @@ def run_benchmark(
             f"--bonus-crypto-count {bonus_crypto_count} "
             f"--proxy-trial-prime-limit {proxy_trial_prime_limit} "
             f"--proxy-chunk-size {proxy_chunk_size} "
+            f"--proxy-tail-prime-limit {proxy_tail_prime_limit} "
+            f"--proxy-tail-chunk-size {proxy_tail_chunk_size} "
             f"--mr-bases {' '.join(str(base) for base in mr_bases)}"
             + (" --truth-check" if truth_check else "")
         ),
@@ -925,6 +980,24 @@ def parse_args(argv: Iterable[str] | None = None) -> argparse.Namespace:
         ),
     )
     parser.add_argument(
+        "--proxy-tail-prime-limit",
+        type=int,
+        default=DEFAULT_PROXY_TAIL_PRIME_LIMIT,
+        help=(
+            "Largest odd prime tested by the deterministic tail interval after the "
+            f"primary proxy stage (default: {DEFAULT_PROXY_TAIL_PRIME_LIMIT})."
+        ),
+    )
+    parser.add_argument(
+        "--proxy-tail-chunk-size",
+        type=int,
+        default=DEFAULT_PROXY_TAIL_CHUNK_SIZE,
+        help=(
+            "Number of tail-interval primes folded into each deterministic GCD batch "
+            f"(default: {DEFAULT_PROXY_TAIL_CHUNK_SIZE})."
+        ),
+    )
+    parser.add_argument(
         "--mr-bases",
         type=int,
         nargs="+",
@@ -952,6 +1025,8 @@ def main(argv: Iterable[str] | None = None) -> int:
         bonus_crypto_count=args.bonus_crypto_count,
         proxy_trial_prime_limit=args.proxy_trial_prime_limit,
         proxy_chunk_size=args.proxy_chunk_size,
+        proxy_tail_prime_limit=args.proxy_tail_prime_limit,
+        proxy_tail_chunk_size=args.proxy_tail_chunk_size,
         mr_bases=args.mr_bases,
         truth_check=args.truth_check,
     )

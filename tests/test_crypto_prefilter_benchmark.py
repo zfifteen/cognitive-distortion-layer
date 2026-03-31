@@ -76,6 +76,18 @@ def test_wheel_prime_table_builds_deterministic_chunks():
     assert table.find_small_factor(101) is None
 
 
+def test_wheel_prime_table_respects_interval_start():
+    """Tail tables should scan only the primes above the primary interval."""
+    module = load_module()
+    table = module.WheelPrimeTable(limit=97, chunk_size=8, start_exclusive=19)
+
+    assert table.start_exclusive == 19
+    assert table.primes[0] == 23
+    assert 19 not in table.primes
+    assert table.find_small_factor(17 * 101) is None
+    assert table.find_small_factor(23 * 101) == 23
+
+
 def test_cheap_cdl_proxy_rejects_small_factor_composites_and_keeps_prime_band():
     """The deterministic proxy should reject obvious composites and preserve prime survivors."""
     module = load_module()
@@ -89,6 +101,23 @@ def test_cheap_cdl_proxy_rejects_small_factor_composites_and_keeps_prime_band():
     assert composite_proxy["rejected"] is True
     assert composite_proxy["smallest_factor"] == 3
     assert composite_proxy["z_hat"] < 1.0
+
+
+def test_cheap_cdl_proxy_tail_interval_rejects_survivor_without_moving_prime_band():
+    """The tail interval should catch later factors while keeping prime survivors at Z = 1."""
+    module = load_module()
+    primary_table = module.WheelPrimeTable(limit=19, chunk_size=4)
+    tail_table = module.WheelPrimeTable(limit=97, chunk_size=4, start_exclusive=19)
+
+    prime_proxy = module.cheap_cdl_proxy(101, primary_table, tail_prime_table=tail_table)
+    composite_proxy = module.cheap_cdl_proxy(23 * 101, primary_table, tail_prime_table=tail_table)
+
+    assert prime_proxy["rejected"] is False
+    assert prime_proxy["factor_source"] == "survivor"
+    assert prime_proxy["z_hat"] == 1.0
+    assert composite_proxy["rejected"] is True
+    assert composite_proxy["factor_source"] == "tail"
+    assert composite_proxy["smallest_factor"] == 23
 
 
 def test_exact_calibration_keeps_fixed_points_on_primes():
@@ -110,11 +139,13 @@ def test_exact_calibration_keeps_fixed_points_on_primes():
 def test_proxy_pipeline_rejects_small_factor_composites_before_miller_rabin():
     """The proxy+MR path should reject easy composites before the control test runs."""
     module = load_module()
-    table = module.WheelPrimeTable(limit=97, chunk_size=8)
-    candidates = [101, 303, 509, 645]
+    primary_table = module.WheelPrimeTable(limit=19, chunk_size=4)
+    tail_table = module.WheelPrimeTable(limit=97, chunk_size=4, start_exclusive=19)
+    candidates = [101, 303, 509, 23 * 101]
     result = module.run_proxy_crypto_pipeline(
         candidates,
-        prime_table=table,
+        prime_table=primary_table,
+        tail_prime_table=tail_table,
         mr_bases=[2, 3, 5, 7],
         truth_check=True,
     )
