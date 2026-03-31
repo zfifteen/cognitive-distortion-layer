@@ -62,13 +62,27 @@ def test_sieve_primes_is_deterministic_and_complete_on_small_limit():
     assert module.sieve_primes(20) == [2, 3, 5, 7, 11, 13, 17, 19]
 
 
+def test_wheel_prime_table_builds_deterministic_chunks():
+    """The precomputed table should expose stable prime and chunk metadata."""
+    module = load_module()
+    table = module.WheelPrimeTable(limit=97, chunk_size=8)
+
+    assert table.limit == 97
+    assert table.chunk_size == 8
+    assert len(table.primes) == 24
+    assert len(table.chunks) == 3
+    assert len(table.chunk_products) == 3
+    assert table.find_small_factor(303) == 3
+    assert table.find_small_factor(101) is None
+
+
 def test_cheap_cdl_proxy_rejects_small_factor_composites_and_keeps_prime_band():
     """The deterministic proxy should reject obvious composites and preserve prime survivors."""
     module = load_module()
-    trial_primes = [prime for prime in module.sieve_primes(97) if prime != 2]
+    table = module.WheelPrimeTable(limit=97, chunk_size=8)
 
-    prime_proxy = module.cheap_cdl_proxy(101, trial_primes)
-    composite_proxy = module.cheap_cdl_proxy(303, trial_primes)
+    prime_proxy = module.cheap_cdl_proxy(101, table)
+    composite_proxy = module.cheap_cdl_proxy(303, table)
 
     assert prime_proxy["rejected"] is False
     assert prime_proxy["z_hat"] == 1.0
@@ -96,11 +110,11 @@ def test_exact_calibration_keeps_fixed_points_on_primes():
 def test_proxy_pipeline_rejects_small_factor_composites_before_miller_rabin():
     """The proxy+MR path should reject easy composites before the control test runs."""
     module = load_module()
-    trial_primes = [prime for prime in module.sieve_primes(97) if prime != 2]
+    table = module.WheelPrimeTable(limit=97, chunk_size=8)
     candidates = [101, 303, 509, 645]
     result = module.run_proxy_crypto_pipeline(
         candidates,
-        trial_primes=trial_primes,
+        prime_table=table,
         mr_bases=[2, 3, 5, 7],
         truth_check=True,
     )
