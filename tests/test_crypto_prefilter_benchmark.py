@@ -56,6 +56,27 @@ def test_miller_rabin_fixed_bases_matches_known_small_cases():
         assert module.miller_rabin_fixed_bases(value, bases) is expected
 
 
+def test_sieve_primes_is_deterministic_and_complete_on_small_limit():
+    """The proxy's prime table should be deterministic and correct on a small window."""
+    module = load_module()
+    assert module.sieve_primes(20) == [2, 3, 5, 7, 11, 13, 17, 19]
+
+
+def test_cheap_cdl_proxy_rejects_small_factor_composites_and_keeps_prime_band():
+    """The deterministic proxy should reject obvious composites and preserve prime survivors."""
+    module = load_module()
+    trial_primes = [prime for prime in module.sieve_primes(97) if prime != 2]
+
+    prime_proxy = module.cheap_cdl_proxy(101, trial_primes)
+    composite_proxy = module.cheap_cdl_proxy(303, trial_primes)
+
+    assert prime_proxy["rejected"] is False
+    assert prime_proxy["z_hat"] == 1.0
+    assert composite_proxy["rejected"] is True
+    assert composite_proxy["smallest_factor"] == 3
+    assert composite_proxy["z_hat"] < 1.0
+
+
 def test_exact_calibration_keeps_fixed_points_on_primes():
     """The calibration harness should preserve the sweet-spot prime band on a small panel."""
     module = load_module()
@@ -70,3 +91,22 @@ def test_exact_calibration_keeps_fixed_points_on_primes():
     assert result["strict_contractions"] == 3
     assert result["miller_rabin_control"]["false_positives"] == 0
     assert result["miller_rabin_control"]["false_negatives"] == 0
+
+
+def test_proxy_pipeline_rejects_small_factor_composites_before_miller_rabin():
+    """The proxy+MR path should reject easy composites before the control test runs."""
+    module = load_module()
+    trial_primes = [prime for prime in module.sieve_primes(97) if prime != 2]
+    candidates = [101, 303, 509, 645]
+    result = module.run_proxy_crypto_pipeline(
+        candidates,
+        trial_primes=trial_primes,
+        mr_bases=[2, 3, 5, 7],
+        truth_check=True,
+    )
+
+    assert result["candidate_count"] == 4
+    assert result["rejected_by_proxy"] == 2
+    assert result["survivors_to_miller_rabin"] == 2
+    assert result["classification"]["false_positives"] == 0
+    assert result["classification"]["false_negatives"] == 0

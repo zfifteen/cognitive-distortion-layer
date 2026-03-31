@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Deterministic benchmark for exact CDL calibration and Miller-Rabin control."""
+"""Deterministic benchmark for exact CDL, proxy CDL, and Miller-Rabin control."""
 
 from __future__ import annotations
 
@@ -24,14 +24,16 @@ if str(SOURCE_DIR) not in sys.path:
 import cdl
 
 
-DEFAULT_EXACT_BITS = 24
+DEFAULT_EXACT_BITS = 20
 DEFAULT_EXACT_COUNT = 256
 DEFAULT_CRYPTO_BITS = 2048
-DEFAULT_CRYPTO_COUNT = 512
+DEFAULT_CRYPTO_COUNT = 1024
 DEFAULT_MR_BASES = [2, 3, 5, 7, 11, 13, 17, 19]
 DEFAULT_NAMESPACE = "cdl-crypto-prefilter"
+DEFAULT_PROXY_TRIAL_PRIME_LIMIT = 7001
 SWEET_SPOT_V = math.e ** 2 / 2.0
 FIXED_POINT_TOLERANCE = 1e-12
+LOG_FLOAT_MIN = math.log(sys.float_info.min)
 
 
 def deterministic_odd_candidate(
@@ -141,6 +143,118 @@ def compact_hex(n: int, edge: int = 16) -> str:
     return f"0x{text[:edge]}...{text[-edge:]}"
 
 
+def sieve_primes(limit: int) -> List[int]:
+    """Generate primes up to limit with a deterministic sieve."""
+    if limit < 2:
+        return []
+
+    flags = bytearray(b"\x01") * (limit + 1)
+    flags[:2] = b"\x00\x00"
+    primes: List[int] = []
+    for value in range(2, limit + 1):
+        if not flags[value]:
+            continue
+        primes.append(value)
+        start = value * value
+        if start <= limit:
+            flags[start : limit + 1 : value] = b"\x00" * (((limit - start) // value) + 1)
+    return primes
+
+
+def cheap_cdl_proxy(
+    n: int,
+    trial_primes: Sequence[int],
+) -> Dict[str, float | int | bool | None]:
+    """
+    Deterministic CDL proxy using a small-prime divisor lower bound.
+
+    This is the narrow deterministic slice of Path 2: reject candidates only when a
+    concrete small factor is found. When no small factor is found, the proxy leaves
+    the candidate on the prime band (`z_hat = 1.0`) and defers to Miller-Rabin.
+    """
+    if n < 2:
+        return {
+            "z_hat": 0.0,
+            "d_est": 0.0,
+            "rejected": True,
+            "smallest_factor": None,
+            "residual_bits": 0,
+        }
+
+    original_n = n
+    residual = n
+    d_est = 1.0
+    smallest_factor = None
+    found_factor = False
+
+    for prime in trial_primes:
+        if prime * prime > residual:
+            break
+
+        exponent = 0
+        while residual % prime == 0:
+            residual //= prime
+            exponent += 1
+
+        if exponent == 0:
+            continue
+
+        found_factor = True
+        if smallest_factor is None:
+            smallest_factor = prime
+        d_est *= exponent + 1
+
+    if found_factor:
+        if residual > 1:
+            d_est *= 2.0
+        log_z = (1.0 - d_est / 2.0) * math.log(original_n)
+        z_hat = 0.0 if log_z < LOG_FLOAT_MIN else math.exp(log_z)
+    else:
+        d_est = 2.0
+        z_hat = 1.0
+
+    return {
+        "z_hat": z_hat,
+        "d_est": d_est,
+        "rejected": bool(z_hat < 1.0 - FIXED_POINT_TOLERANCE),
+        "smallest_factor": smallest_factor,
+        "residual_bits": residual.bit_length() if residual > 0 else 0,
+    }
+
+
+def summarize_binary_classification(
+    predicted_primes: Sequence[bool],
+    truth_primes: Sequence[bool],
+) -> Dict[str, float | int]:
+    """Summarize binary prime/composite predictions."""
+    tp = fp = tn = fn = 0
+    for predicted_prime, truth_prime in zip(predicted_primes, truth_primes):
+        if predicted_prime and truth_prime:
+            tp += 1
+        elif predicted_prime and not truth_prime:
+            fp += 1
+        elif not predicted_prime and truth_prime:
+            fn += 1
+        else:
+            tn += 1
+
+    total = len(predicted_primes)
+    accuracy = (tp + tn) / total if total else 0.0
+    precision = tp / (tp + fp) if (tp + fp) else 0.0
+    recall = tp / (tp + fn) if (tp + fn) else 0.0
+    f1 = 2.0 * precision * recall / (precision + recall) if (precision + recall) else 0.0
+    return {
+        "accuracy": accuracy,
+        "precision": precision,
+        "recall": recall,
+        "f1_score": f1,
+        "true_positives": tp,
+        "false_positives": fp,
+        "true_negatives": tn,
+        "false_negatives": fn,
+    }
+
+
 def run_exact_calibration(
     candidates: Sequence[int],
     mr_bases: Sequence[int],
@@ -241,6 +355,52 @@ def run_exact_calibration(
     }
 
 
+def run_proxy_calibration(
+    candidates: Sequence[int],
+    trial_primes: Sequence[int],
+) -> Dict:
+    """Benchmark the deterministic CDL proxy on the tractable calibration corpus."""
+    proxy_durations_ns: List[int] = []
+    proxy_prime_predictions: List[bool] = []
+    truth_primes: List[bool] = []
+    fixed_points = 0
+    false_fixed_points = 0
+    strict_contractions = 0
+
+    for n in candidates:
+        truth_is_prime = bool(isprime(n))
+        truth_primes.append(truth_is_prime)
+
+        start_ns = time.perf_counter_ns()
+        proxy = cheap_cdl_proxy(n, trial_primes)
+        proxy_durations_ns.append(time.perf_counter_ns() - start_ns)
+
+        predicted_prime = not bool(proxy["rejected"])
+        proxy_prime_predictions.append(predicted_prime)
+
+        z_hat = float(proxy["z_hat"])
+        if math.isclose(z_hat, 1.0, rel_tol=FIXED_POINT_TOLERANCE, abs_tol=FIXED_POINT_TOLERANCE):
+            fixed_points += 1
+            if not truth_is_prime:
+                false_fixed_points += 1
+        elif not truth_is_prime and z_hat < 1.0:
+            strict_contractions += 1
+
+    metrics = summarize_binary_classification(proxy_prime_predictions, truth_primes)
+    return {
+        "candidate_source": "deterministic_sha256_odd_stream",
+        "candidate_count": len(candidates),
+        "bit_length": max(n.bit_length() for n in candidates),
+        "trial_prime_limit": max(trial_primes) if trial_primes else 0,
+        "trial_prime_count": len(trial_primes),
+        "fixed_points": fixed_points,
+        "false_fixed_points": false_fixed_points,
+        "strict_contractions": strict_contractions,
+        "timing_ms": summarize_durations_ms(proxy_durations_ns),
+        "classification": metrics,
+    }
+
+
 def run_crypto_control(
     candidates: Sequence[int],
     mr_bases: Sequence[int],
@@ -291,18 +451,103 @@ def run_crypto_control(
     return results
 
 
+def run_proxy_crypto_pipeline(
+    candidates: Sequence[int],
+    trial_primes: Sequence[int],
+    mr_bases: Sequence[int],
+    truth_check: bool = False,
+) -> Dict:
+    """Benchmark the deterministic proxy followed by Miller-Rabin on survivors."""
+    proxy_durations_ns: List[int] = []
+    mr_durations_ns: List[int] = []
+    pipeline_durations_ns: List[int] = []
+    rejected_by_proxy = 0
+    survivors = 0
+    pass_count = 0
+    first_pass_index = None
+    truth_primes: List[bool] = []
+    predicted_primes: List[bool] = []
+
+    for index, n in enumerate(candidates):
+        truth_is_prime = bool(isprime(n)) if truth_check else False
+        if truth_check:
+            truth_primes.append(truth_is_prime)
+
+        start_ns = time.perf_counter_ns()
+        proxy = cheap_cdl_proxy(n, trial_primes)
+        proxy_duration = time.perf_counter_ns() - start_ns
+        proxy_durations_ns.append(proxy_duration)
+
+        if bool(proxy["rejected"]):
+            rejected_by_proxy += 1
+            pipeline_durations_ns.append(proxy_duration)
+            if truth_check:
+                predicted_primes.append(False)
+            continue
+
+        survivors += 1
+        start_ns = time.perf_counter_ns()
+        mr_passed = miller_rabin_fixed_bases(n, mr_bases)
+        mr_duration = time.perf_counter_ns() - start_ns
+        mr_durations_ns.append(mr_duration)
+        pipeline_durations_ns.append(proxy_duration + mr_duration)
+
+        if mr_passed:
+            pass_count += 1
+            if first_pass_index is None:
+                first_pass_index = index
+
+        if truth_check:
+            predicted_primes.append(mr_passed)
+
+    results = {
+        "candidate_source": "deterministic_sha256_odd_stream",
+        "candidate_count": len(candidates),
+        "bit_length": max(n.bit_length() for n in candidates),
+        "trial_prime_limit": max(trial_primes) if trial_primes else 0,
+        "trial_prime_count": len(trial_primes),
+        "rejected_by_proxy": rejected_by_proxy,
+        "rejection_rate": rejected_by_proxy / len(candidates),
+        "survivors_to_miller_rabin": survivors,
+        "survivor_rate": survivors / len(candidates),
+        "miller_rabin_pass_count": pass_count,
+        "first_pass_index": first_pass_index,
+        "proxy_timing_ms": summarize_durations_ms(proxy_durations_ns),
+        "miller_rabin_survivor_timing_ms": (
+            summarize_durations_ms(mr_durations_ns)
+            if mr_durations_ns
+            else {"mean": 0.0, "median": 0.0, "min": 0.0, "max": 0.0}
+        ),
+        "pipeline_timing_ms": summarize_durations_ms(pipeline_durations_ns),
+        "candidate_preview": [compact_hex(n) for n in candidates[:3]],
+    }
+
+    if truth_check:
+        results["classification"] = summarize_binary_classification(predicted_primes, truth_primes)
+
+    return results
+
+
 def build_report_markdown(results: Dict) -> str:
     """Build a concise markdown report for the benchmark run."""
     calibration = results["exact_calibration"]
+    proxy_calibration = results["proxy_calibration"]
     crypto = results["crypto_control"]
+    proxy_crypto = results["proxy_crypto_pipeline"]
     mr_small = calibration["miller_rabin_control"]
-    mean_ratio = calibration["z_timing_ms"]["mean"] / mr_small["timing_ms"]["mean"]
-    ratio_text = f"{mean_ratio:.2f}x"
+    exact_to_mr_ratio = calibration["z_timing_ms"]["mean"] / mr_small["timing_ms"]["mean"]
+    proxy_speedup = crypto["timing_ms"]["mean"] / proxy_crypto["pipeline_timing_ms"]["mean"]
     first_pass_text = (
         str(crypto["first_pass_index"])
         if crypto["first_pass_index"] is not None
         else "none in corpus"
     )
+    proxy_first_pass_text = (
+        str(proxy_crypto["first_pass_index"])
+        if proxy_crypto["first_pass_index"] is not None
+        else "none in corpus"
+    )
+    proxy_metrics = proxy_calibration["classification"]
 
     lines = [
         "# Crypto Prefilter Benchmark Report",
@@ -310,6 +555,7 @@ def build_report_markdown(results: Dict) -> str:
         f"Date: {results['experiment_date']}",
         "",
         "This report benchmarks the exact sweet-spot CDL path where the current implementation is executable,",
+        "a deterministic CDL proxy based on small-prime divisor lower bounds,",
         "and fixed-base Miller-Rabin on deterministic cryptographic-scale odd candidates.",
         "",
         "## Configuration",
@@ -319,15 +565,18 @@ def build_report_markdown(results: Dict) -> str:
         f"- `exact_count`: {results['configuration']['exact_count']}",
         f"- `crypto_bits`: {results['configuration']['crypto_bits']}",
         f"- `crypto_count`: {results['configuration']['crypto_count']}",
+        f"- `proxy_trial_prime_limit`: {results['configuration']['proxy_trial_prime_limit']}",
         f"- `miller_rabin_bases`: {results['configuration']['mr_bases']}",
         f"- `truth_check`: {results['configuration']['truth_check']}",
         "",
         "## Headline Findings",
         "",
         f"- Sweet-spot Z-space hit the fixed-point band for `{calibration['numeric_fixed_points']}` of `{calibration['prime_count']}` calibration primes within numeric tolerance, with `{calibration['numeric_false_fixed_points']}` fixed-point composites.",
+        f"- The deterministic proxy hit `{proxy_calibration['fixed_points']}` fixed points on the same calibration corpus with `{proxy_calibration['false_fixed_points']}` composite fixed points and calibration accuracy `{proxy_metrics['accuracy']:.2%}`.",
         f"- On the same `{calibration['bit_length']}`-bit calibration corpus, fixed-base Miller-Rabin matched exact primality with accuracy `{mr_small['accuracy']:.2%}`.",
-        f"- Mean runtime on the calibration corpus was `{calibration['z_timing_ms']['mean']:.6f}` ms per candidate for exact sweet-spot `z_normalize` versus `{mr_small['timing_ms']['mean']:.6f}` ms for Miller-Rabin, a ratio of `{ratio_text}`.",
+        f"- Mean runtime on the calibration corpus was `{calibration['z_timing_ms']['mean']:.6f}` ms per candidate for exact sweet-spot `z_normalize`, `{proxy_calibration['timing_ms']['mean']:.6f}` ms for the deterministic proxy, and `{mr_small['timing_ms']['mean']:.6f}` ms for Miller-Rabin.",
         f"- On the `{crypto['bit_length']}`-bit control corpus, Miller-Rabin averaged `{crypto['timing_ms']['mean']:.6f}` ms per candidate and passed `{crypto['miller_rabin_pass_count']}` of `{crypto['candidate_count']}` odd candidates; first pass index: `{first_pass_text}`.",
+        f"- The deterministic proxy rejected `{proxy_crypto['rejected_by_proxy']}` of `{proxy_crypto['candidate_count']}` cryptographic candidates before Miller-Rabin (`{proxy_crypto['rejection_rate']:.2%}`), cut the end-to-end pipeline to `{proxy_crypto['pipeline_timing_ms']['mean']:.6f}` ms per candidate, and delivered a measured `{proxy_speedup:.2f}x` speedup over Miller-Rabin alone on this corpus.",
         f"- The current exact CDL path was intentionally not run on `{results['configuration']['crypto_bits']}`-bit arbitrary candidates because `src/python/cdl.py` computes divisor count by `O(sqrt n)` enumeration; the implied trial space is about `2^{results['exact_scaling_boundary']['sqrt_space_bits']}` divisibility checks per worst-case candidate.",
         "",
         "## Exact Calibration",
@@ -347,6 +596,20 @@ def build_report_markdown(results: Dict) -> str:
         f"| Mean exact `z_normalize` time (ms) | {calibration['z_timing_ms']['mean']:.6f} |",
         f"| Mean Miller-Rabin time (ms) | {mr_small['timing_ms']['mean']:.6f} |",
         "",
+        "## Proxy Calibration",
+        "",
+        "| Metric | Value |",
+        "|---|---:|",
+        f"| Trial prime limit | {proxy_calibration['trial_prime_limit']} |",
+        f"| Trial prime count | {proxy_calibration['trial_prime_count']} |",
+        f"| Fixed points | {proxy_calibration['fixed_points']} |",
+        f"| Composite false fixed points | {proxy_calibration['false_fixed_points']} |",
+        f"| Strict composite contractions | {proxy_calibration['strict_contractions']} |",
+        f"| Accuracy | {proxy_metrics['accuracy']:.6%} |",
+        f"| Precision | {proxy_metrics['precision']:.6%} |",
+        f"| Recall | {proxy_metrics['recall']:.6%} |",
+        f"| Mean proxy time (ms) | {proxy_calibration['timing_ms']['mean']:.6f} |",
+        "",
         "## Crypto Control",
         "",
         "| Metric | Value |",
@@ -356,6 +619,31 @@ def build_report_markdown(results: Dict) -> str:
         f"| Miller-Rabin pass rate | {crypto['miller_rabin_pass_rate']:.6%} |",
         f"| First pass index | {first_pass_text} |",
         f"| Mean Miller-Rabin time (ms) | {crypto['timing_ms']['mean']:.6f} |",
+        "",
+        "## Proxy + Miller-Rabin Pipeline",
+        "",
+        "| Metric | Value |",
+        "|---|---:|",
+        f"| Trial prime limit | {proxy_crypto['trial_prime_limit']} |",
+        f"| Trial prime count | {proxy_crypto['trial_prime_count']} |",
+        f"| Rejected before Miller-Rabin | {proxy_crypto['rejected_by_proxy']} |",
+        f"| Rejection rate | {proxy_crypto['rejection_rate']:.6%} |",
+        f"| Survivors to Miller-Rabin | {proxy_crypto['survivors_to_miller_rabin']} |",
+        f"| Survivor rate | {proxy_crypto['survivor_rate']:.6%} |",
+        f"| Miller-Rabin passes after proxy | {proxy_crypto['miller_rabin_pass_count']} |",
+        f"| First pass index after proxy | {proxy_first_pass_text} |",
+        f"| Mean proxy time (ms) | {proxy_crypto['proxy_timing_ms']['mean']:.6f} |",
+        f"| Mean survivor Miller-Rabin time (ms) | {proxy_crypto['miller_rabin_survivor_timing_ms']['mean']:.6f} |",
+        f"| Mean pipeline time (ms) | {proxy_crypto['pipeline_timing_ms']['mean']:.6f} |",
+        f"| Speedup vs MR-only | {proxy_speedup:.6f}x |",
+        "",
+        "## Calibration Timing Ratios",
+        "",
+        "| Ratio | Value |",
+        "|---|---:|",
+        f"| Exact CDL / Miller-Rabin | {exact_to_mr_ratio:.6f}x |",
+        f"| Exact CDL / Proxy | {calibration['z_timing_ms']['mean'] / proxy_calibration['timing_ms']['mean']:.6f}x |",
+        f"| Proxy / Miller-Rabin | {proxy_calibration['timing_ms']['mean'] / mr_small['timing_ms']['mean']:.6f}x |",
         "",
         "## Reproduction",
         "",
@@ -377,16 +665,25 @@ def run_benchmark(
     exact_count: int,
     crypto_bits: int,
     crypto_count: int,
+    proxy_trial_prime_limit: int,
     mr_bases: Sequence[int],
     truth_check: bool,
 ) -> Dict:
     """Run the exact calibration and crypto control benchmark."""
     exact_candidates = deterministic_odd_candidates(exact_bits, exact_count)
     crypto_candidates = deterministic_odd_candidates(crypto_bits, crypto_count)
+    proxy_trial_primes = [prime for prime in sieve_primes(proxy_trial_prime_limit) if prime != 2]
 
     exact_calibration = run_exact_calibration(exact_candidates, mr_bases=mr_bases)
+    proxy_calibration = run_proxy_calibration(exact_candidates, trial_primes=proxy_trial_primes)
     crypto_control = run_crypto_control(
         crypto_candidates,
+        mr_bases=mr_bases,
+        truth_check=truth_check,
+    )
+    proxy_crypto_pipeline = run_proxy_crypto_pipeline(
+        crypto_candidates,
+        trial_primes=proxy_trial_primes,
         mr_bases=mr_bases,
         truth_check=truth_check,
     )
@@ -399,6 +696,7 @@ def run_benchmark(
             "exact_count": exact_count,
             "crypto_bits": crypto_bits,
             "crypto_count": crypto_count,
+            "proxy_trial_prime_limit": proxy_trial_prime_limit,
             "mr_bases": list(mr_bases),
             "truth_check": truth_check,
         },
@@ -408,13 +706,16 @@ def run_benchmark(
             "worst_case_candidate_bits": crypto_bits,
         },
         "exact_calibration": exact_calibration,
+        "proxy_calibration": proxy_calibration,
         "crypto_control": crypto_control,
+        "proxy_crypto_pipeline": proxy_crypto_pipeline,
         "reproduction_command": (
             "python3 experiments/crypto_prefilter/benchmark.py "
             f"--exact-bits {exact_bits} "
             f"--exact-count {exact_count} "
             f"--crypto-bits {crypto_bits} "
             f"--crypto-count {crypto_count} "
+            f"--proxy-trial-prime-limit {proxy_trial_prime_limit} "
             f"--mr-bases {' '.join(str(base) for base in mr_bases)}"
             + (" --truth-check" if truth_check else "")
         ),
@@ -464,6 +765,15 @@ def parse_args(argv: Iterable[str] | None = None) -> argparse.Namespace:
         help=f"Candidate count for the cryptographic control corpus (default: {DEFAULT_CRYPTO_COUNT}).",
     )
     parser.add_argument(
+        "--proxy-trial-prime-limit",
+        type=int,
+        default=DEFAULT_PROXY_TRIAL_PRIME_LIMIT,
+        help=(
+            "Largest odd prime tested by the deterministic proxy before falling through "
+            f"to Miller-Rabin (default: {DEFAULT_PROXY_TRIAL_PRIME_LIMIT})."
+        ),
+    )
+    parser.add_argument(
         "--mr-bases",
         type=int,
         nargs="+",
@@ -487,12 +797,15 @@ def main(argv: Iterable[str] | None = None) -> int:
         exact_count=args.exact_count,
         crypto_bits=args.crypto_bits,
         crypto_count=args.crypto_count,
+        proxy_trial_prime_limit=args.proxy_trial_prime_limit,
         mr_bases=args.mr_bases,
         truth_check=args.truth_check,
     )
 
     calibration = results["exact_calibration"]
+    proxy_calibration = results["proxy_calibration"]
     crypto = results["crypto_control"]
+    proxy_crypto = results["proxy_crypto_pipeline"]
     print("crypto prefilter benchmark complete")
     print(
         "exact calibration:",
@@ -501,9 +814,20 @@ def main(argv: Iterable[str] | None = None) -> int:
         f"{calibration['z_timing_ms']['mean']:.6f} ms/candidate",
     )
     print(
+        "proxy calibration:",
+        f"{proxy_calibration['fixed_points']} fixed points,",
+        f"{proxy_calibration['false_fixed_points']} composite fixed points,",
+        f"{proxy_calibration['timing_ms']['mean']:.6f} ms/candidate",
+    )
+    print(
         "crypto control:",
         f"{crypto['miller_rabin_pass_count']} MR passes in {crypto['candidate_count']} candidates,",
         f"{crypto['timing_ms']['mean']:.6f} ms/candidate",
+    )
+    print(
+        "proxy pipeline:",
+        f"{proxy_crypto['rejected_by_proxy']} rejected before MR,",
+        f"{proxy_crypto['pipeline_timing_ms']['mean']:.6f} ms/candidate",
     )
     return 0
 
