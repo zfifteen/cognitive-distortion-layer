@@ -69,6 +69,10 @@ def test_generate_rsa_keypair_proxy_matches_baseline_on_small_panel():
     assert baseline["n"] == accelerated["n"]
     assert baseline["d"] == accelerated["d"]
     assert accelerated["proxy_rejections"] >= 0
+    assert baseline["assembly_time_ns"] >= 0
+    assert accelerated["proxy_time_ns"] >= 0
+    assert accelerated["miller_rabin_time_ns"] >= 0
+    assert accelerated["total_time_ns"] >= accelerated["assembly_time_ns"]
 
 
 def test_run_rsa_keygen_benchmark_reports_matching_keypairs_and_fixed_points():
@@ -87,3 +91,16 @@ def test_run_rsa_keygen_benchmark_reports_matching_keypairs_and_fixed_points():
     assert result["accelerated"]["keypair_count"] == 2
     assert result["prime_fixed_points"]["fixed_point_count"] == 4
     assert result["saved_miller_rabin_calls"] >= 0
+    for path_name in ("baseline", "accelerated"):
+        path = result[path_name]
+        assert path["total_proxy_time_ms"] >= 0.0
+        assert path["total_miller_rabin_time_ms"] >= 0.0
+        assert path["total_assembly_time_ms"] >= 0.0
+        assert path["total_residual_time_ms"] >= 0.0
+        share_sum = (
+            path["proxy_time_share"]
+            + path["miller_rabin_time_share"]
+            + path["assembly_time_share"]
+            + path["residual_time_share"]
+        )
+        assert abs(share_sum - 1.0) < 1e-9

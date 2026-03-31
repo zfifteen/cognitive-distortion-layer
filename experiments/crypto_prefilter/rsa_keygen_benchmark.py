@@ -85,6 +85,8 @@ def find_rsa_prime(
         "candidates_tested": 0,
         "proxy_rejections": 0,
         "miller_rabin_calls": 0,
+        "proxy_time_ns": 0,
+        "miller_rabin_time_ns": 0,
     }
     excluded = excluded_values or set()
 
@@ -94,6 +96,7 @@ def find_rsa_prime(
         if use_proxy:
             if prime_table is None:
                 raise ValueError("prime_table is required when use_proxy is True")
+            start_ns = time.perf_counter_ns()
             proxy = benchmark.cheap_cdl_proxy(
                 candidate,
                 prime_table,
@@ -101,12 +104,16 @@ def find_rsa_prime(
                 deep_tail_prime_table=deep_tail_prime_table,
                 deep_tail_min_bits=deep_tail_min_bits,
             )
+            stats["proxy_time_ns"] += time.perf_counter_ns() - start_ns
             if bool(proxy["rejected"]):
                 stats["proxy_rejections"] += 1
                 continue
 
         stats["miller_rabin_calls"] += 1
-        if not benchmark.miller_rabin_fixed_bases(candidate, mr_bases):
+        start_ns = time.perf_counter_ns()
+        mr_passed = benchmark.miller_rabin_fixed_bases(candidate, mr_bases)
+        stats["miller_rabin_time_ns"] += time.perf_counter_ns() - start_ns
+        if not mr_passed:
             continue
         if math.gcd(candidate - 1, public_exponent) != 1:
             continue
@@ -131,6 +138,7 @@ def generate_rsa_keypair(
     deep_tail_min_bits: int | None = None,
 ) -> Dict[str, int]:
     """Generate one deterministic RSA keypair and its search statistics."""
+    total_start_ns = time.perf_counter_ns()
     prime_bits = rsa_bits // 2
     p_namespace = f"{namespace}:{rsa_bits}:{keypair_index}:p"
     q_namespace = f"{namespace}:{rsa_bits}:{keypair_index}:q"
@@ -159,11 +167,13 @@ def generate_rsa_keypair(
         excluded_values={p},
     )
 
+    assembly_start_ns = time.perf_counter_ns()
     phi = (p - 1) * (q - 1)
     d = pow(public_exponent, -1, phi)
     n = p * q
     if pow(pow(RSA_VALIDATION_MESSAGE, public_exponent, n), d, n) != RSA_VALIDATION_MESSAGE:
         raise ValueError("RSA round-trip validation failed")
+    assembly_time_ns = time.perf_counter_ns() - assembly_start_ns
 
     return {
         "p": p,
@@ -173,6 +183,12 @@ def generate_rsa_keypair(
         "candidates_tested": p_stats["candidates_tested"] + q_stats["candidates_tested"],
         "proxy_rejections": p_stats["proxy_rejections"] + q_stats["proxy_rejections"],
         "miller_rabin_calls": p_stats["miller_rabin_calls"] + q_stats["miller_rabin_calls"],
+        "proxy_time_ns": p_stats["proxy_time_ns"] + q_stats["proxy_time_ns"],
+        "miller_rabin_time_ns": (
+            p_stats["miller_rabin_time_ns"] + q_stats["miller_rabin_time_ns"]
+        ),
+        "assembly_time_ns": assembly_time_ns,
+        "total_time_ns": time.perf_counter_ns() - total_start_ns,
     }
 
 
@@ -193,6 +209,9 @@ def summarize_keygen_path(
     candidates_per_keypair: List[int] = []
     mr_calls_per_keypair: List[int] = []
     proxy_rejections_per_keypair: List[int] = []
+    proxy_time_per_keypair_ns: List[int] = []
+    mr_time_per_keypair_ns: List[int] = []
+    assembly_time_per_keypair_ns: List[int] = []
 
     start_ns = time.perf_counter_ns()
     for keypair_index in range(keypair_count):
@@ -212,12 +231,27 @@ def summarize_keygen_path(
         candidates_per_keypair.append(keypair["candidates_tested"])
         mr_calls_per_keypair.append(keypair["miller_rabin_calls"])
         proxy_rejections_per_keypair.append(keypair["proxy_rejections"])
+        proxy_time_per_keypair_ns.append(keypair["proxy_time_ns"])
+        mr_time_per_keypair_ns.append(keypair["miller_rabin_time_ns"])
+        assembly_time_per_keypair_ns.append(keypair["assembly_time_ns"])
     total_wall_time_ns = time.perf_counter_ns() - start_ns
 
     total_candidates_tested = sum(candidates_per_keypair)
     total_miller_rabin_calls = sum(mr_calls_per_keypair)
     total_proxy_rejections = sum(proxy_rejections_per_keypair)
+    total_proxy_time_ns = sum(proxy_time_per_keypair_ns)
+    total_miller_rabin_time_ns = sum(mr_time_per_keypair_ns)
+    total_assembly_time_ns = sum(assembly_time_per_keypair_ns)
+    residual_time_ns = (
+        total_wall_time_ns
+        - total_proxy_time_ns
+        - total_miller_rabin_time_ns
+        - total_assembly_time_ns
+    )
     total_seconds = total_wall_time_ns / 1_000_000_000.0
+
+    if residual_time_ns < 0:
+        raise ValueError("timing bucket residual fell below zero")
 
     return (
         {
@@ -243,6 +277,26 @@ def summarize_keygen_path(
             ),
             "mean_candidates_per_prime": total_candidates_tested / (2.0 * keypair_count),
             "mean_miller_rabin_calls_per_prime": total_miller_rabin_calls / (2.0 * keypair_count),
+            "total_proxy_time_ms": total_proxy_time_ns / 1_000_000.0,
+            "total_miller_rabin_time_ms": total_miller_rabin_time_ns / 1_000_000.0,
+            "total_assembly_time_ms": total_assembly_time_ns / 1_000_000.0,
+            "total_residual_time_ms": residual_time_ns / 1_000_000.0,
+            "proxy_time_share": total_proxy_time_ns / total_wall_time_ns if total_wall_time_ns else 0.0,
+            "miller_rabin_time_share": (
+                total_miller_rabin_time_ns / total_wall_time_ns if total_wall_time_ns else 0.0
+            ),
+            "assembly_time_share": (
+                total_assembly_time_ns / total_wall_time_ns if total_wall_time_ns else 0.0
+            ),
+            "residual_time_share": residual_time_ns / total_wall_time_ns if total_wall_time_ns else 0.0,
+            "mean_proxy_time_per_keypair_ms": (total_proxy_time_ns / keypair_count) / 1_000_000.0,
+            "mean_miller_rabin_time_per_keypair_ms": (
+                total_miller_rabin_time_ns / keypair_count
+            ) / 1_000_000.0,
+            "mean_assembly_time_per_keypair_ms": (
+                total_assembly_time_ns / keypair_count
+            ) / 1_000_000.0,
+            "mean_residual_time_per_keypair_ms": (residual_time_ns / keypair_count) / 1_000_000.0,
             "candidate_preview": [benchmark.compact_hex(pair["n"]) for pair in keypairs[:3]],
             "mean_candidates_per_keypair": total_candidates_tested / keypair_count,
             "median_candidates_per_keypair": statistics.median(candidates_per_keypair),
@@ -357,6 +411,7 @@ def build_rsa_report_section(title: str, results: Dict) -> List[str]:
         f"- Baseline generated `{baseline['keypair_count']}` deterministic `{results['rsa_bits']}`-bit keypairs in `{baseline['total_wall_time_ms']:.6f}` ms total (`{baseline['keypairs_per_second']:.6f}` keypairs/s).",
         f"- The accelerated path generated the same `{baseline['keypair_count']}` keypairs in `{accelerated['total_wall_time_ms']:.6f}` ms total (`{accelerated['keypairs_per_second']:.6f}` keypairs/s) for a measured `{results['speedup']:.2f}x` speedup.",
         f"- The proxy removed `{results['saved_miller_rabin_calls']}` Miller-Rabin calls (`{results['saved_miller_rabin_call_rate']:.2%}` of baseline MR work) while preserving identical deterministic keypairs across both paths.",
+        f"- Timing buckets in the accelerated path broke down into `{accelerated['total_proxy_time_ms']:.6f}` ms proxy filtering (`{accelerated['proxy_time_share']:.2%}`), `{accelerated['total_miller_rabin_time_ms']:.6f}` ms survivor Miller-Rabin (`{accelerated['miller_rabin_time_share']:.2%}`), `{accelerated['total_assembly_time_ms']:.6f}` ms RSA assembly/validation (`{accelerated['assembly_time_share']:.2%}`), and `{accelerated['total_residual_time_ms']:.6f}` ms residual search overhead (`{accelerated['residual_time_share']:.2%}`).",
         f"- Final keypair primes were confirmed by `sympy.isprime`; under the sweet-spot closed form, all `{fixed_points['fixed_point_count']}` confirmed factors remain exactly on the `Z = 1.0` fixed-point band.",
         "",
         "| Metric | Baseline | Accelerated |",
@@ -371,6 +426,14 @@ def build_rsa_report_section(title: str, results: Dict) -> List[str]:
         f"| Total proxy rejections | 0 | {accelerated['total_proxy_rejections']} |",
         f"| Proxy rejection contribution | 0.000000% | {accelerated['proxy_rejection_rate']:.6%} |",
         f"| Saved Miller-Rabin call rate | 0.000000% | {results['saved_miller_rabin_call_rate']:.6%} |",
+        f"| Proxy filtering time (ms) | {baseline['total_proxy_time_ms']:.6f} | {accelerated['total_proxy_time_ms']:.6f} |",
+        f"| Survivor Miller-Rabin time (ms) | {baseline['total_miller_rabin_time_ms']:.6f} | {accelerated['total_miller_rabin_time_ms']:.6f} |",
+        f"| RSA assembly + validation time (ms) | {baseline['total_assembly_time_ms']:.6f} | {accelerated['total_assembly_time_ms']:.6f} |",
+        f"| Residual search overhead (ms) | {baseline['total_residual_time_ms']:.6f} | {accelerated['total_residual_time_ms']:.6f} |",
+        f"| Proxy filtering share | {baseline['proxy_time_share']:.6%} | {accelerated['proxy_time_share']:.6%} |",
+        f"| Survivor Miller-Rabin share | {baseline['miller_rabin_time_share']:.6%} | {accelerated['miller_rabin_time_share']:.6%} |",
+        f"| RSA assembly + validation share | {baseline['assembly_time_share']:.6%} | {accelerated['assembly_time_share']:.6%} |",
+        f"| Residual search overhead share | {baseline['residual_time_share']:.6%} | {accelerated['residual_time_share']:.6%} |",
         f"| Matching deterministic keypairs | {results['matching_keypairs']} | {results['matching_keypairs']} |",
         "",
     ]

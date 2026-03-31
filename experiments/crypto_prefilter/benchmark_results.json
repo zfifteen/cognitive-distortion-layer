@@ -46,10 +46,10 @@
     "numeric_false_fixed_points": 0,
     "strict_contractions": 227,
     "z_timing_ms": {
-      "mean": 0.054423140625,
-      "median": 0.0547915,
-      "min": 0.044084,
-      "max": 0.080667
+      "mean": 0.05571471875,
+      "median": 0.0555625,
+      "min": 0.043833,
+      "max": 0.084
     },
     "miller_rabin_control": {
       "bases": [
@@ -63,10 +63,10 @@
         19
       ],
       "timing_ms": {
-        "mean": 0.00140987109375,
-        "median": 0.000292,
+        "mean": 0.001540859375,
+        "median": 0.000333,
         "min": 0.000208,
-        "max": 0.020916
+        "max": 0.03525
       },
       "accuracy": 1.0,
       "true_positives": 29,
@@ -98,10 +98,10 @@
     "false_fixed_points": 0,
     "strict_contractions": 227,
     "timing_ms": {
-      "mean": 0.009909875,
-      "median": 0.00125,
+      "mean": 0.01028123828125,
+      "median": 0.001292,
       "min": 0.001083,
-      "max": 0.094583
+      "max": 0.099833
     },
     "classification": {
       "accuracy": 1.0,
@@ -132,10 +132,10 @@
     "miller_rabin_pass_rate": 0.0009765625,
     "first_pass_index": 354,
     "timing_ms": {
-      "mean": 8.54659070703125,
-      "median": 0.00225,
+      "mean": 8.466359057617188,
+      "median": 0.0023335,
       "min": 0.000708,
-      "max": 217.7525
+      "max": 217.160708
     },
     "candidate_preview": [
       "0xa8817da494bc5962...6d814142f23ea59b",
@@ -164,22 +164,22 @@
     "miller_rabin_pass_count": 1,
     "first_pass_index": 354,
     "proxy_timing_ms": {
-      "mean": 0.238221056640625,
-      "median": 0.0151455,
-      "min": 0.012708,
-      "max": 2.544792
+      "mean": 0.234365615234375,
+      "median": 0.014916,
+      "min": 0.01275,
+      "max": 2.378625
     },
     "miller_rabin_survivor_timing_ms": {
-      "mean": 29.74142443478261,
-      "median": 27.655979000000002,
-      "min": 26.956875,
-      "max": 219.754542
+      "mean": 29.352956032608695,
+      "median": 27.326895999999998,
+      "min": 26.732583,
+      "max": 215.867417
     },
     "pipeline_timing_ms": {
-      "mean": 2.910302158203125,
-      "median": 0.0151455,
-      "min": 0.012708,
-      "max": 221.839667
+      "mean": 2.8715452587890624,
+      "median": 0.014916,
+      "min": 0.01275,
+      "max": 218.005417
     },
     "candidate_preview": [
       "0xa8817da494bc5962...6d814142f23ea59b",
@@ -205,10 +205,10 @@
     "miller_rabin_pass_rate": 0.0,
     "first_pass_index": null,
     "timing_ms": {
-      "mean": 64.404972171875,
-      "median": 0.0032294999999999997,
+      "mean": 63.6271998984375,
+      "median": 0.0034165000000000003,
       "min": 0.00125,
-      "max": 281.521667
+      "max": 229.395042
     },
     "candidate_preview": [
       "0xfe3dd18e1c47176e...ce89f8ce93d2e4ad",
@@ -237,22 +237,22 @@
     "miller_rabin_pass_count": 0,
     "first_pass_index": null,
     "proxy_timing_ms": {
-      "mean": 0.94874319140625,
-      "median": 0.0272705,
-      "min": 0.024041,
-      "max": 10.109458
+      "mean": 0.93861944921875,
+      "median": 0.0275835,
+      "min": 0.023958,
+      "max": 10.21575
     },
     "miller_rabin_survivor_timing_ms": {
-      "mean": 216.64663436363637,
-      "median": 213.4994375,
-      "min": 210.245375,
-      "max": 263.373875
+      "mean": 211.17754359090907,
+      "median": 211.24618750000002,
+      "min": 209.10125,
+      "max": 212.7825
     },
     "pipeline_timing_ms": {
-      "mean": 19.56681333203125,
-      "median": 0.0272705,
-      "min": 0.024041,
-      "max": 273.407916
+      "mean": 19.0866896015625,
+      "median": 0.0275835,
+      "min": 0.023958,
+      "max": 222.99825
     },
     "candidate_preview": [
       "0xfe3dd18e1c47176e...ce89f8ce93d2e4ad",
@@ -271,15 +271,27 @@
       "keypair_count": 300,
       "public_exponent": 65537,
       "path": "miller_rabin_only",
-      "total_wall_time_ms": 291966.381792,
-      "keypairs_per_second": 1.0275155590129663,
-      "mean_time_per_keypair_ms": 973.2212726399999,
+      "total_wall_time_ms": 291938.126792,
+      "keypairs_per_second": 1.0276150062911924,
+      "mean_time_per_keypair_ms": 973.1270893066666,
       "total_candidates_tested": 216402,
       "total_miller_rabin_calls": 216402,
       "total_proxy_rejections": 0,
       "proxy_rejection_rate": 0.0,
       "mean_candidates_per_prime": 360.67,
       "mean_miller_rabin_calls_per_prime": 360.67,
+      "total_proxy_time_ms": 0.0,
+      "total_miller_rabin_time_ms": 280573.817575,
+      "total_assembly_time_ms": 10027.370039,
+      "total_residual_time_ms": 1336.939178,
+      "proxy_time_share": 0.0,
+      "miller_rabin_time_share": 0.961072884374925,
+      "assembly_time_share": 0.034347586419037,
+      "residual_time_share": 0.004579529206038039,
+      "mean_proxy_time_per_keypair_ms": 0.0,
+      "mean_miller_rabin_time_per_keypair_ms": 935.2460585833334,
+      "mean_assembly_time_per_keypair_ms": 33.42456679666667,
+      "mean_residual_time_per_keypair_ms": 4.456463926666666,
       "candidate_preview": [
         "0x71a7b4a07b27a436...643149e581e2b35f",
         "0xd1344dd596c47e3e...c2eb0a6a2551b48d",
@@ -297,15 +309,27 @@
       "keypair_count": 300,
       "public_exponent": 65537,
       "path": "gated_proxy_then_miller_rabin",
-      "total_wall_time_ms": 139310.796667,
-      "keypairs_per_second": 2.153458362004071,
-      "mean_time_per_keypair_ms": 464.36932222333337,
+      "total_wall_time_ms": 139942.831833,
+      "keypairs_per_second": 2.143732523277815,
+      "mean_time_per_keypair_ms": 466.47610611,
       "total_candidates_tested": 216402,
       "total_miller_rabin_calls": 19538,
       "total_proxy_rejections": 196864,
       "proxy_rejection_rate": 0.9097143279636972,
       "mean_candidates_per_prime": 360.67,
       "mean_miller_rabin_calls_per_prime": 32.56333333333333,
+      "total_proxy_time_ms": 31637.561032,
+      "total_miller_rabin_time_ms": 96950.562244,
+      "total_assembly_time_ms": 10265.828585,
+      "total_residual_time_ms": 1088.879972,
+      "proxy_time_share": 0.2260748951382841,
+      "miller_rabin_time_share": 0.6927869114417765,
+      "assembly_time_share": 0.0733573020535319,
+      "residual_time_share": 0.007780891366407455,
+      "mean_proxy_time_per_keypair_ms": 105.45853677333332,
+      "mean_miller_rabin_time_per_keypair_ms": 323.1685408133333,
+      "mean_assembly_time_per_keypair_ms": 34.21942861666667,
+      "mean_residual_time_per_keypair_ms": 3.629599906666667,
       "candidate_preview": [
         "0x71a7b4a07b27a436...643149e581e2b35f",
         "0xd1344dd596c47e3e...c2eb0a6a2551b48d",
@@ -317,7 +341,7 @@
       "median_miller_rabin_calls_per_keypair": 55.0,
       "max_miller_rabin_calls_per_keypair": 252
     },
-    "speedup": 2.0957914876468515,
+    "speedup": 2.086124190629376,
     "saved_miller_rabin_calls": 196864,
     "saved_miller_rabin_call_rate": 0.9097143279636972,
     "matching_keypairs": 300,
@@ -338,15 +362,27 @@
       "keypair_count": 50,
       "public_exponent": 65537,
       "path": "miller_rabin_only",
-      "total_wall_time_ms": 754530.306875,
-      "keypairs_per_second": 0.06626639055372405,
-      "mean_time_per_keypair_ms": 15090.6061375,
+      "total_wall_time_ms": 757750.922792,
+      "keypairs_per_second": 0.0659847431340243,
+      "mean_time_per_keypair_ms": 15155.01845584,
       "total_candidates_tested": 87576,
       "total_miller_rabin_calls": 87576,
       "total_proxy_rejections": 0,
       "proxy_rejection_rate": 0.0,
       "mean_candidates_per_prime": 875.76,
       "mean_miller_rabin_calls_per_prime": 875.76,
+      "total_proxy_time_ms": 0.0,
+      "total_miller_rabin_time_ms": 743827.968721,
+      "total_assembly_time_ms": 12695.092213,
+      "total_residual_time_ms": 1227.861858,
+      "proxy_time_share": 0.0,
+      "miller_rabin_time_share": 0.9816259490391649,
+      "assembly_time_share": 0.01675364797475114,
+      "residual_time_share": 0.0016204029860839165,
+      "mean_proxy_time_per_keypair_ms": 0.0,
+      "mean_miller_rabin_time_per_keypair_ms": 14876.55937442,
+      "mean_assembly_time_per_keypair_ms": 253.90184426,
+      "mean_residual_time_per_keypair_ms": 24.55723716,
       "candidate_preview": [
         "0xeee03c7296cf95bd...96fc02b7981d3409",
         "0x96a56ba36b668f74...d5a09fa5d14d3cab",
@@ -364,15 +400,27 @@
       "keypair_count": 50,
       "public_exponent": 65537,
       "path": "gated_proxy_then_miller_rabin",
-      "total_wall_time_ms": 271652.730541,
-      "keypairs_per_second": 0.18405852170314776,
-      "mean_time_per_keypair_ms": 5433.05461082,
+      "total_wall_time_ms": 268557.631625,
+      "keypairs_per_second": 0.18617977712067932,
+      "mean_time_per_keypair_ms": 5371.1526325,
       "total_candidates_tested": 87576,
       "total_miller_rabin_calls": 7824,
       "total_proxy_rejections": 79752,
       "proxy_rejection_rate": 0.9106604549191559,
       "mean_candidates_per_prime": 875.76,
       "mean_miller_rabin_calls_per_prime": 78.24,
+      "total_proxy_time_ms": 20304.792431,
+      "total_miller_rabin_time_ms": 234816.947269,
+      "total_assembly_time_ms": 12644.407662,
+      "total_residual_time_ms": 791.484263,
+      "proxy_time_share": 0.07560683458570473,
+      "miller_rabin_time_share": 0.8743633381340146,
+      "assembly_time_share": 0.047082660006683395,
+      "residual_time_share": 0.0029471672735973025,
+      "mean_proxy_time_per_keypair_ms": 406.09584862,
+      "mean_miller_rabin_time_per_keypair_ms": 4696.33894538,
+      "mean_assembly_time_per_keypair_ms": 252.88815324,
+      "mean_residual_time_per_keypair_ms": 15.82968526,
       "candidate_preview": [
         "0xeee03c7296cf95bd...96fc02b7981d3409",
         "0x96a56ba36b668f74...d5a09fa5d14d3cab",
@@ -384,7 +432,7 @@
       "median_miller_rabin_calls_per_keypair": 121.5,
       "max_miller_rabin_calls_per_keypair": 621
     },
-    "speedup": 2.7775546572726983,
+    "speedup": 2.821557958368073,
     "saved_miller_rabin_calls": 79752,
     "saved_miller_rabin_call_rate": 0.9106604549191559,
     "matching_keypairs": 50,
