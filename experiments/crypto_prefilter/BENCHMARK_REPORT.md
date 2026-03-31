@@ -36,6 +36,12 @@ and fixed-base Miller-Rabin on deterministic cryptographic-scale odd candidates.
 - On the `4096`-bit bonus corpus, the same deterministic proxy rejected `234` of `256` candidates (`91.41%`), reduced mean runtime from `63.627200` ms to `19.086690` ms per candidate, and delivered a measured `3.33x` speedup.
 - The current exact CDL path was intentionally not run on `2048`-bit arbitrary candidates because `src/python/cdl.py` computes divisor count by `O(sqrt n)` enumeration; the implied trial space is about `2^1024` divisibility checks per worst-case candidate.
 
+## Status
+
+- `src/python/cdl_prime_geodesic_prefilter.py` now exposes the deterministic integration path benchmarked in this report.
+- `generate_prime()` keeps the CDL geodesic prefilter in front of fixed-base Miller-Rabin and returns the same deterministic prime stream that the baseline search reaches on the same namespace.
+- Current production result: `2.09x` end-to-end speedup for `300` deterministic `2048`-bit RSA keypairs and `2.82x` for the `50`-keypair `4096`-bit spot-check, with `90.97%` to `91.07%` fewer Miller-Rabin calls.
+
 ## Exact Calibration
 
 | Metric | Value |
@@ -230,4 +236,3 @@ Run the end-to-end RSA benchmark again with:
 ```bash
 python3 experiments/crypto_prefilter/rsa_keygen_benchmark.py --rsa-bits 2048 --rsa-keypair-count 300 --bonus-rsa-bits 4096 --bonus-rsa-keypair-count 50 --public-exponent 65537
 ```
-

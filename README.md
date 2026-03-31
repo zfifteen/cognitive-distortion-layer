@@ -69,6 +69,7 @@ These results demonstrate that primes appear as "minimal-curvature geodesics" wi
 * **Source Layout**:
 
   * `src/python/cdl.py`: Canonical CDL primitives
+  * `src/python/cdl_prime_geodesic_prefilter.py`: Deterministic cryptographic prime prefilter and generator
   * `src/python/cdl_continuous.py`: Continuous-domain CDL extensions
   * `src/python/v_recovery.py`: Traversal-rate inference
   * `src/python/cognitive_pilot.py`: Sprint 6 cognitive pilot pipeline
@@ -105,6 +106,27 @@ normalized_signals = cdl.signal_normalize_pipeline(raw_signals, v=1.0)
 ```
 
 **See [`docs/specification/INTEGRATION.md`](docs/specification/INTEGRATION.md) for complete integration examples.**
+
+### Deterministic Cryptographic Prime Generation
+
+The production CDL geodesic prefilter now ships as `src/python/cdl_prime_geodesic_prefilter.py`. It applies the sweet-spot band at `v = e² / 2`, rejects composites through deterministic gated prime tables, and hands surviving candidates to fixed-base Miller-Rabin.
+
+```python
+from cdl_prime_geodesic_prefilter import CDLPrimeGeodesicPrefilter
+
+p_prefilter = CDLPrimeGeodesicPrefilter(bit_length=1024, namespace="rsa-demo:p")
+q_prefilter = CDLPrimeGeodesicPrefilter(bit_length=1024, namespace="rsa-demo:q")
+
+p = p_prefilter.generate_prime(public_exponent=65537)
+q = q_prefilter.generate_prime(public_exponent=65537, excluded_values={p})
+```
+
+Benchmarked result:
+- `2.09x` end-to-end speedup across `300` deterministic `2048`-bit RSA keypairs
+- `2.82x` end-to-end speedup across `50` deterministic `4096`-bit RSA keypairs
+- `90.97%` to `91.07%` Miller-Rabin reduction with the prime band preserved
+
+See [`experiments/crypto_prefilter/BENCHMARK_REPORT.md`](experiments/crypto_prefilter/BENCHMARK_REPORT.md) for the measured keygen path and timing breakdown.
 
 ### Quick Start with Self-Contained Gist
 
