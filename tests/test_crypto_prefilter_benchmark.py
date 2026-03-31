@@ -120,6 +120,36 @@ def test_cheap_cdl_proxy_tail_interval_rejects_survivor_without_moving_prime_ban
     assert composite_proxy["smallest_factor"] == 23
 
 
+def test_cheap_cdl_proxy_deep_tail_gate_only_activates_at_or_above_threshold():
+    """The deeper tail should stay dormant below the gate and reject only when the gate opens."""
+    module = load_module()
+    primary_table = module.WheelPrimeTable(limit=19, chunk_size=4)
+    tail_table = module.WheelPrimeTable(limit=29, chunk_size=4, start_exclusive=19)
+    deep_tail_table = module.WheelPrimeTable(limit=97, chunk_size=4, start_exclusive=29)
+    composite = 31 * 101
+
+    gated_off = module.cheap_cdl_proxy(
+        composite,
+        primary_table,
+        tail_prime_table=tail_table,
+        deep_tail_prime_table=deep_tail_table,
+        deep_tail_min_bits=composite.bit_length() + 1,
+    )
+    gated_on = module.cheap_cdl_proxy(
+        composite,
+        primary_table,
+        tail_prime_table=tail_table,
+        deep_tail_prime_table=deep_tail_table,
+        deep_tail_min_bits=composite.bit_length(),
+    )
+
+    assert gated_off["rejected"] is False
+    assert gated_off["factor_source"] == "survivor"
+    assert gated_on["rejected"] is True
+    assert gated_on["factor_source"] == "deep_tail"
+    assert gated_on["smallest_factor"] == 31
+
+
 def test_exact_calibration_keeps_fixed_points_on_primes():
     """The calibration harness should preserve the sweet-spot prime band on a small panel."""
     module = load_module()
@@ -146,6 +176,8 @@ def test_proxy_pipeline_rejects_small_factor_composites_before_miller_rabin():
         candidates,
         prime_table=primary_table,
         tail_prime_table=tail_table,
+        deep_tail_prime_table=None,
+        deep_tail_min_bits=None,
         mr_bases=[2, 3, 5, 7],
         truth_check=True,
     )

@@ -9,8 +9,11 @@
     "bonus_crypto_count": 256,
     "proxy_trial_prime_limit": 200003,
     "proxy_chunk_size": 256,
-    "proxy_tail_prime_limit": 500009,
+    "proxy_tail_prime_limit": 300007,
     "proxy_tail_chunk_size": 256,
+    "proxy_deep_tail_prime_limit": 1000003,
+    "proxy_deep_tail_chunk_size": 256,
+    "proxy_deep_tail_min_bits": 4096,
     "mr_bases": [
       2,
       3,
@@ -43,10 +46,10 @@
     "numeric_false_fixed_points": 0,
     "strict_contractions": 227,
     "z_timing_ms": {
-      "mean": 0.057015984375,
-      "median": 0.056979,
-      "min": 0.043667,
-      "max": 0.146042
+      "mean": 0.0574090078125,
+      "median": 0.0560835,
+      "min": 0.044416,
+      "max": 0.195875
     },
     "miller_rabin_control": {
       "bases": [
@@ -60,10 +63,10 @@
         19
       ],
       "timing_ms": {
-        "mean": 0.00153094140625,
+        "mean": 0.00160757421875,
         "median": 0.000333,
         "min": 0.000208,
-        "max": 0.016834
+        "max": 0.01825
       },
       "accuracy": 1.0,
       "true_positives": 29,
@@ -84,17 +87,21 @@
     "trial_prime_limit": 200003,
     "trial_prime_count": 17984,
     "chunk_size": 256,
-    "tail_prime_limit": 500009,
-    "tail_prime_count": 23554,
+    "tail_prime_limit": 300007,
+    "tail_prime_count": 8013,
     "tail_chunk_size": 256,
+    "deep_tail_prime_limit": 1000003,
+    "deep_tail_prime_count": 52501,
+    "deep_tail_chunk_size": 256,
+    "deep_tail_min_bits": 4096,
     "fixed_points": 29,
     "false_fixed_points": 0,
     "strict_contractions": 227,
     "timing_ms": {
-      "mean": 0.01562985546875,
-      "median": 0.00125,
-      "min": 0.001042,
-      "max": 0.170458
+      "mean": 0.01057634765625,
+      "median": 0.001292,
+      "min": 0.001083,
+      "max": 0.130958
     },
     "classification": {
       "accuracy": 1.0,
@@ -125,10 +132,10 @@
     "miller_rabin_pass_rate": 0.0009765625,
     "first_pass_index": 354,
     "timing_ms": {
-      "mean": 8.486503731445312,
-      "median": 0.002292,
+      "mean": 8.644589467773438,
+      "median": 0.002417,
       "min": 0.000708,
-      "max": 218.125583
+      "max": 221.126666
     },
     "candidate_preview": [
       "0xa8817da494bc5962...6d814142f23ea59b",
@@ -143,32 +150,36 @@
     "trial_prime_limit": 200003,
     "trial_prime_count": 17984,
     "chunk_size": 256,
-    "tail_prime_limit": 500009,
-    "tail_prime_count": 23554,
+    "tail_prime_limit": 300007,
+    "tail_prime_count": 8013,
     "tail_chunk_size": 256,
-    "rejected_by_proxy": 934,
-    "rejection_rate": 0.912109375,
-    "survivors_to_miller_rabin": 90,
-    "survivor_rate": 0.087890625,
+    "deep_tail_prime_limit": 1000003,
+    "deep_tail_prime_count": 52501,
+    "deep_tail_chunk_size": 256,
+    "deep_tail_min_bits": 4096,
+    "rejected_by_proxy": 932,
+    "rejection_rate": 0.91015625,
+    "survivors_to_miller_rabin": 92,
+    "survivor_rate": 0.08984375,
     "miller_rabin_pass_count": 1,
     "first_pass_index": 354,
     "proxy_timing_ms": {
-      "mean": 0.3666048740234375,
-      "median": 0.014958,
-      "min": 0.012625,
-      "max": 4.371333
+      "mean": 0.2410169443359375,
+      "median": 0.015,
+      "min": 0.012542,
+      "max": 2.858041
     },
     "miller_rabin_survivor_timing_ms": {
-      "mean": 29.856488433333332,
-      "median": 27.553479,
-      "min": 26.766708,
-      "max": 217.111208
+      "mean": 30.15641207608696,
+      "median": 28.009208,
+      "min": 27.178542,
+      "max": 223.0515
     },
     "pipeline_timing_ms": {
-      "mean": 2.990710302734375,
-      "median": 0.014958,
-      "min": 0.012625,
-      "max": 220.631791
+      "mean": 2.950382091796875,
+      "median": 0.015,
+      "min": 0.012542,
+      "max": 225.284583
     },
     "candidate_preview": [
       "0xa8817da494bc5962...6d814142f23ea59b",
@@ -194,10 +205,10 @@
     "miller_rabin_pass_rate": 0.0,
     "first_pass_index": null,
     "timing_ms": {
-      "mean": 63.87716095703125,
-      "median": 0.00325,
+      "mean": 65.67425894921875,
+      "median": 0.003334,
       "min": 0.001291,
-      "max": 220.575917
+      "max": 270.92925
     },
     "candidate_preview": [
       "0xfe3dd18e1c47176e...ce89f8ce93d2e4ad",
@@ -212,32 +223,36 @@
     "trial_prime_limit": 200003,
     "trial_prime_count": 17984,
     "chunk_size": 256,
-    "tail_prime_limit": 500009,
-    "tail_prime_count": 23554,
+    "tail_prime_limit": 300007,
+    "tail_prime_count": 8013,
     "tail_chunk_size": 256,
-    "rejected_by_proxy": 233,
-    "rejection_rate": 0.91015625,
-    "survivors_to_miller_rabin": 23,
-    "survivor_rate": 0.08984375,
+    "deep_tail_prime_limit": 1000003,
+    "deep_tail_prime_count": 52501,
+    "deep_tail_chunk_size": 256,
+    "deep_tail_min_bits": 4096,
+    "rejected_by_proxy": 234,
+    "rejection_rate": 0.9140625,
+    "survivors_to_miller_rabin": 22,
+    "survivor_rate": 0.0859375,
     "miller_rabin_pass_count": 0,
     "first_pass_index": null,
     "proxy_timing_ms": {
-      "mean": 0.50554446875,
-      "median": 0.0275835,
-      "min": 0.023917,
-      "max": 4.965667
+      "mean": 0.95882148046875,
+      "median": 0.0275625,
+      "min": 0.024084,
+      "max": 10.866833
     },
     "miller_rabin_survivor_timing_ms": {
-      "mean": 212.75118473913042,
-      "median": 212.294208,
-      "min": 209.867084,
-      "max": 227.887833
+      "mean": 217.23122531818183,
+      "median": 214.5120005,
+      "min": 212.460375,
+      "max": 269.37825
     },
     "pipeline_timing_ms": {
-      "mean": 19.619908722656252,
-      "median": 0.0275835,
-      "min": 0.023917,
-      "max": 232.83375
+      "mean": 19.62712990625,
+      "median": 0.0275625,
+      "min": 0.024084,
+      "max": 279.255041
     },
     "candidate_preview": [
       "0xfe3dd18e1c47176e...ce89f8ce93d2e4ad",
@@ -245,5 +260,5 @@
       "0xbc098eadbd129b0e...251b864685fab5a9"
     ]
   },
-  "reproduction_command": "python3 experiments/crypto_prefilter/benchmark.py --exact-bits 20 --exact-count 256 --crypto-bits 2048 --crypto-count 1024 --bonus-crypto-bits 4096 --bonus-crypto-count 256 --proxy-trial-prime-limit 200003 --proxy-chunk-size 256 --proxy-tail-prime-limit 500009 --proxy-tail-chunk-size 256 --mr-bases 2 3 5 7 11 13 17 19"
+  "reproduction_command": "python3 experiments/crypto_prefilter/benchmark.py --exact-bits 20 --exact-count 256 --crypto-bits 2048 --crypto-count 1024 --bonus-crypto-bits 4096 --bonus-crypto-count 256 --proxy-trial-prime-limit 200003 --proxy-chunk-size 256 --proxy-tail-prime-limit 300007 --proxy-tail-chunk-size 256 --proxy-deep-tail-prime-limit 1000003 --proxy-deep-tail-chunk-size 256 --proxy-deep-tail-min-bits 4096 --mr-bases 2 3 5 7 11 13 17 19"
 }

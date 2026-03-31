@@ -34,8 +34,11 @@ DEFAULT_MR_BASES = [2, 3, 5, 7, 11, 13, 17, 19]
 DEFAULT_NAMESPACE = "cdl-crypto-prefilter"
 DEFAULT_PROXY_TRIAL_PRIME_LIMIT = 200003
 DEFAULT_PROXY_CHUNK_SIZE = 256
-DEFAULT_PROXY_TAIL_PRIME_LIMIT = 500009
+DEFAULT_PROXY_TAIL_PRIME_LIMIT = 300007
 DEFAULT_PROXY_TAIL_CHUNK_SIZE = 256
+DEFAULT_PROXY_DEEP_TAIL_PRIME_LIMIT = 1000003
+DEFAULT_PROXY_DEEP_TAIL_CHUNK_SIZE = 256
+DEFAULT_PROXY_DEEP_TAIL_MIN_BITS = 4096
 SWEET_SPOT_V = math.e ** 2 / 2.0
 FIXED_POINT_TOLERANCE = 1e-12
 LOG_FLOAT_MIN = math.log(sys.float_info.min)
@@ -228,13 +231,15 @@ def cheap_cdl_proxy(
     n: int,
     prime_table: WheelPrimeTable,
     tail_prime_table: WheelPrimeTable | None = None,
+    deep_tail_prime_table: WheelPrimeTable | None = None,
+    deep_tail_min_bits: int | None = None,
 ) -> Dict[str, float | int | bool | None]:
     """
-    Deterministic CDL proxy using interval-split chunked prime tables.
+    Deterministic CDL proxy using bit-length-gated interval-split chunked prime tables.
 
     This path rejects candidates only when a concrete factor is found in the primary
-    or tail interval. When no factor is found, the proxy leaves the candidate on the
-    prime band (`z_hat = 1.0`) and defers to Miller-Rabin.
+    or tail intervals. When no factor is found, the proxy leaves the candidate on
+    the prime band (`z_hat = 1.0`) and defers to Miller-Rabin.
     """
     if n < 2:
         return {
@@ -251,6 +256,14 @@ def cheap_cdl_proxy(
     if smallest_factor is None and tail_prime_table is not None:
         d_est, smallest_factor = tail_prime_table.divisor_lower_bound(n)
         factor_source = "tail"
+    if (
+        smallest_factor is None
+        and deep_tail_prime_table is not None
+        and deep_tail_min_bits is not None
+        and original_n.bit_length() >= deep_tail_min_bits
+    ):
+        d_est, smallest_factor = deep_tail_prime_table.divisor_lower_bound(n)
+        factor_source = "deep_tail"
     if smallest_factor is not None:
         log_z = (1.0 - d_est / 2.0) * math.log(original_n)
         z_hat = 0.0 if log_z < LOG_FLOAT_MIN else math.exp(log_z)
@@ -405,6 +418,8 @@ def run_proxy_calibration(
     candidates: Sequence[int],
     prime_table: WheelPrimeTable,
     tail_prime_table: WheelPrimeTable | None = None,
+    deep_tail_prime_table: WheelPrimeTable | None = None,
+    deep_tail_min_bits: int | None = None,
 ) -> Dict:
     """Benchmark the deterministic CDL proxy on the tractable calibration corpus."""
     proxy_durations_ns: List[int] = []
@@ -419,7 +434,13 @@ def run_proxy_calibration(
         truth_primes.append(truth_is_prime)
 
         start_ns = time.perf_counter_ns()
-        proxy = cheap_cdl_proxy(n, prime_table, tail_prime_table=tail_prime_table)
+        proxy = cheap_cdl_proxy(
+            n,
+            prime_table,
+            tail_prime_table=tail_prime_table,
+            deep_tail_prime_table=deep_tail_prime_table,
+            deep_tail_min_bits=deep_tail_min_bits,
+        )
         proxy_durations_ns.append(time.perf_counter_ns() - start_ns)
 
         predicted_prime = not bool(proxy["rejected"])
@@ -444,6 +465,16 @@ def run_proxy_calibration(
         "tail_prime_limit": tail_prime_table.limit if tail_prime_table is not None else 0,
         "tail_prime_count": len(tail_prime_table.primes) if tail_prime_table is not None else 0,
         "tail_chunk_size": tail_prime_table.chunk_size if tail_prime_table is not None else 0,
+        "deep_tail_prime_limit": (
+            deep_tail_prime_table.limit if deep_tail_prime_table is not None else 0
+        ),
+        "deep_tail_prime_count": (
+            len(deep_tail_prime_table.primes) if deep_tail_prime_table is not None else 0
+        ),
+        "deep_tail_chunk_size": (
+            deep_tail_prime_table.chunk_size if deep_tail_prime_table is not None else 0
+        ),
+        "deep_tail_min_bits": deep_tail_min_bits or 0,
         "fixed_points": fixed_points,
         "false_fixed_points": false_fixed_points,
         "strict_contractions": strict_contractions,
@@ -505,8 +536,10 @@ def run_crypto_control(
 def run_proxy_crypto_pipeline(
     candidates: Sequence[int],
     prime_table: WheelPrimeTable,
-    tail_prime_table: WheelPrimeTable | None,
     mr_bases: Sequence[int],
+    tail_prime_table: WheelPrimeTable | None = None,
+    deep_tail_prime_table: WheelPrimeTable | None = None,
+    deep_tail_min_bits: int | None = None,
     truth_check: bool = False,
 ) -> Dict:
     """Benchmark the deterministic proxy followed by Miller-Rabin on survivors."""
@@ -526,7 +559,13 @@ def run_proxy_crypto_pipeline(
             truth_primes.append(truth_is_prime)
 
         start_ns = time.perf_counter_ns()
-        proxy = cheap_cdl_proxy(n, prime_table, tail_prime_table=tail_prime_table)
+        proxy = cheap_cdl_proxy(
+            n,
+            prime_table,
+            tail_prime_table=tail_prime_table,
+            deep_tail_prime_table=deep_tail_prime_table,
+            deep_tail_min_bits=deep_tail_min_bits,
+        )
         proxy_duration = time.perf_counter_ns() - start_ns
         proxy_durations_ns.append(proxy_duration)
 
@@ -562,6 +601,16 @@ def run_proxy_crypto_pipeline(
         "tail_prime_limit": tail_prime_table.limit if tail_prime_table is not None else 0,
         "tail_prime_count": len(tail_prime_table.primes) if tail_prime_table is not None else 0,
         "tail_chunk_size": tail_prime_table.chunk_size if tail_prime_table is not None else 0,
+        "deep_tail_prime_limit": (
+            deep_tail_prime_table.limit if deep_tail_prime_table is not None else 0
+        ),
+        "deep_tail_prime_count": (
+            len(deep_tail_prime_table.primes) if deep_tail_prime_table is not None else 0
+        ),
+        "deep_tail_chunk_size": (
+            deep_tail_prime_table.chunk_size if deep_tail_prime_table is not None else 0
+        ),
+        "deep_tail_min_bits": deep_tail_min_bits or 0,
         "rejected_by_proxy": rejected_by_proxy,
         "rejection_rate": rejected_by_proxy / len(candidates),
         "survivors_to_miller_rabin": survivors,
@@ -628,7 +677,7 @@ def build_report_markdown(results: Dict) -> str:
         f"Date: {results['experiment_date']}",
         "",
         "This report benchmarks the exact sweet-spot CDL path where the current implementation is executable,",
-        "a deterministic CDL proxy backed by interval-split chunked prime tables,",
+        "a deterministic CDL proxy backed by bit-length-gated interval-split chunked prime tables,",
         "and fixed-base Miller-Rabin on deterministic cryptographic-scale odd candidates.",
         "",
         "## Configuration",
@@ -644,6 +693,9 @@ def build_report_markdown(results: Dict) -> str:
         f"- `proxy_chunk_size`: {results['configuration']['proxy_chunk_size']}",
         f"- `proxy_tail_prime_limit`: {results['configuration']['proxy_tail_prime_limit']}",
         f"- `proxy_tail_chunk_size`: {results['configuration']['proxy_tail_chunk_size']}",
+        f"- `proxy_deep_tail_prime_limit`: {results['configuration']['proxy_deep_tail_prime_limit']}",
+        f"- `proxy_deep_tail_chunk_size`: {results['configuration']['proxy_deep_tail_chunk_size']}",
+        f"- `proxy_deep_tail_min_bits`: {results['configuration']['proxy_deep_tail_min_bits']}",
         f"- `miller_rabin_bases`: {results['configuration']['mr_bases']}",
         f"- `truth_check`: {results['configuration']['truth_check']}",
         "",
@@ -693,6 +745,10 @@ def build_report_markdown(results: Dict) -> str:
         f"| Tail prime limit | {proxy_calibration['tail_prime_limit']} |",
         f"| Tail prime count | {proxy_calibration['tail_prime_count']} |",
         f"| Tail chunk size | {proxy_calibration['tail_chunk_size']} |",
+        f"| Deep tail prime limit | {proxy_calibration['deep_tail_prime_limit']} |",
+        f"| Deep tail prime count | {proxy_calibration['deep_tail_prime_count']} |",
+        f"| Deep tail chunk size | {proxy_calibration['deep_tail_chunk_size']} |",
+        f"| Deep tail minimum bits | {proxy_calibration['deep_tail_min_bits']} |",
         f"| Fixed points | {proxy_calibration['fixed_points']} |",
         f"| Composite false fixed points | {proxy_calibration['false_fixed_points']} |",
         f"| Strict composite contractions | {proxy_calibration['strict_contractions']} |",
@@ -721,6 +777,10 @@ def build_report_markdown(results: Dict) -> str:
         f"| Tail prime limit | {proxy_crypto['tail_prime_limit']} |",
         f"| Tail prime count | {proxy_crypto['tail_prime_count']} |",
         f"| Tail chunk size | {proxy_crypto['tail_chunk_size']} |",
+        f"| Deep tail prime limit | {proxy_crypto['deep_tail_prime_limit']} |",
+        f"| Deep tail prime count | {proxy_crypto['deep_tail_prime_count']} |",
+        f"| Deep tail chunk size | {proxy_crypto['deep_tail_chunk_size']} |",
+        f"| Deep tail minimum bits | {proxy_crypto['deep_tail_min_bits']} |",
         f"| Rejected before Miller-Rabin | {proxy_crypto['rejected_by_proxy']} |",
         f"| Rejection rate | {proxy_crypto['rejection_rate']:.6%} |",
         f"| Survivors to Miller-Rabin | {proxy_crypto['survivors_to_miller_rabin']} |",
@@ -752,6 +812,10 @@ def build_report_markdown(results: Dict) -> str:
         f"| Tail prime limit | {bonus_proxy['tail_prime_limit'] if bonus_proxy is not None else 0} |",
         f"| Tail prime count | {bonus_proxy['tail_prime_count'] if bonus_proxy is not None else 0} |",
         f"| Tail chunk size | {bonus_proxy['tail_chunk_size'] if bonus_proxy is not None else 0} |",
+        f"| Deep tail prime limit | {bonus_proxy['deep_tail_prime_limit'] if bonus_proxy is not None else 0} |",
+        f"| Deep tail prime count | {bonus_proxy['deep_tail_prime_count'] if bonus_proxy is not None else 0} |",
+        f"| Deep tail chunk size | {bonus_proxy['deep_tail_chunk_size'] if bonus_proxy is not None else 0} |",
+        f"| Deep tail minimum bits | {bonus_proxy['deep_tail_min_bits'] if bonus_proxy is not None else 0} |",
         f"| Rejected before Miller-Rabin | {bonus_proxy['rejected_by_proxy'] if bonus_proxy is not None else 0} |",
         f"| Rejection rate | {(bonus_proxy['rejection_rate'] if bonus_proxy is not None else 0.0):.6%} |",
         f"| Survivors to Miller-Rabin | {bonus_proxy['survivors_to_miller_rabin'] if bonus_proxy is not None else 0} |",
@@ -798,12 +862,17 @@ def run_benchmark(
     proxy_chunk_size: int,
     proxy_tail_prime_limit: int,
     proxy_tail_chunk_size: int,
+    proxy_deep_tail_prime_limit: int,
+    proxy_deep_tail_chunk_size: int,
+    proxy_deep_tail_min_bits: int,
     mr_bases: Sequence[int],
     truth_check: bool,
 ) -> Dict:
     """Run the exact calibration and crypto control benchmark."""
     if proxy_tail_prime_limit <= proxy_trial_prime_limit:
         raise ValueError("proxy_tail_prime_limit must exceed proxy_trial_prime_limit")
+    if proxy_deep_tail_prime_limit <= proxy_tail_prime_limit:
+        raise ValueError("proxy_deep_tail_prime_limit must exceed proxy_tail_prime_limit")
 
     exact_candidates = deterministic_odd_candidates(exact_bits, exact_count)
     crypto_candidates = deterministic_odd_candidates(crypto_bits, crypto_count)
@@ -821,12 +890,19 @@ def run_benchmark(
         chunk_size=proxy_tail_chunk_size,
         start_exclusive=proxy_trial_prime_limit,
     )
+    deep_tail_prime_table = WheelPrimeTable(
+        limit=proxy_deep_tail_prime_limit,
+        chunk_size=proxy_deep_tail_chunk_size,
+        start_exclusive=proxy_tail_prime_limit,
+    )
 
     exact_calibration = run_exact_calibration(exact_candidates, mr_bases=mr_bases)
     proxy_calibration = run_proxy_calibration(
         exact_candidates,
         prime_table=prime_table,
         tail_prime_table=tail_prime_table,
+        deep_tail_prime_table=deep_tail_prime_table,
+        deep_tail_min_bits=proxy_deep_tail_min_bits,
     )
     crypto_control = run_crypto_control(
         crypto_candidates,
@@ -837,6 +913,8 @@ def run_benchmark(
         crypto_candidates,
         prime_table=prime_table,
         tail_prime_table=tail_prime_table,
+        deep_tail_prime_table=deep_tail_prime_table,
+        deep_tail_min_bits=proxy_deep_tail_min_bits,
         mr_bases=mr_bases,
         truth_check=truth_check,
     )
@@ -854,6 +932,8 @@ def run_benchmark(
             bonus_crypto_candidates,
             prime_table=prime_table,
             tail_prime_table=tail_prime_table,
+            deep_tail_prime_table=deep_tail_prime_table,
+            deep_tail_min_bits=proxy_deep_tail_min_bits,
             mr_bases=mr_bases,
             truth_check=truth_check,
         )
@@ -875,6 +955,9 @@ def run_benchmark(
             "proxy_chunk_size": proxy_chunk_size,
             "proxy_tail_prime_limit": proxy_tail_prime_limit,
             "proxy_tail_chunk_size": proxy_tail_chunk_size,
+            "proxy_deep_tail_prime_limit": proxy_deep_tail_prime_limit,
+            "proxy_deep_tail_chunk_size": proxy_deep_tail_chunk_size,
+            "proxy_deep_tail_min_bits": proxy_deep_tail_min_bits,
             "mr_bases": list(mr_bases),
             "truth_check": truth_check,
         },
@@ -901,6 +984,9 @@ def run_benchmark(
             f"--proxy-chunk-size {proxy_chunk_size} "
             f"--proxy-tail-prime-limit {proxy_tail_prime_limit} "
             f"--proxy-tail-chunk-size {proxy_tail_chunk_size} "
+            f"--proxy-deep-tail-prime-limit {proxy_deep_tail_prime_limit} "
+            f"--proxy-deep-tail-chunk-size {proxy_deep_tail_chunk_size} "
+            f"--proxy-deep-tail-min-bits {proxy_deep_tail_min_bits} "
             f"--mr-bases {' '.join(str(base) for base in mr_bases)}"
             + (" --truth-check" if truth_check else "")
         ),
@@ -998,6 +1084,33 @@ def parse_args(argv: Iterable[str] | None = None) -> argparse.Namespace:
         ),
     )
     parser.add_argument(
+        "--proxy-deep-tail-prime-limit",
+        type=int,
+        default=DEFAULT_PROXY_DEEP_TAIL_PRIME_LIMIT,
+        help=(
+            "Largest odd prime tested by the deeper deterministic tail interval on "
+            f"bit lengths at or above the gate (default: {DEFAULT_PROXY_DEEP_TAIL_PRIME_LIMIT})."
+        ),
+    )
+    parser.add_argument(
+        "--proxy-deep-tail-chunk-size",
+        type=int,
+        default=DEFAULT_PROXY_DEEP_TAIL_CHUNK_SIZE,
+        help=(
+            "Number of deeper tail-interval primes folded into each deterministic "
+            f"GCD batch (default: {DEFAULT_PROXY_DEEP_TAIL_CHUNK_SIZE})."
+        ),
+    )
+    parser.add_argument(
+        "--proxy-deep-tail-min-bits",
+        type=int,
+        default=DEFAULT_PROXY_DEEP_TAIL_MIN_BITS,
+        help=(
+            "Minimum candidate bit length required before the deeper deterministic "
+            f"tail interval is applied (default: {DEFAULT_PROXY_DEEP_TAIL_MIN_BITS})."
+        ),
+    )
+    parser.add_argument(
         "--mr-bases",
         type=int,
         nargs="+",
@@ -1027,6 +1140,9 @@ def main(argv: Iterable[str] | None = None) -> int:
         proxy_chunk_size=args.proxy_chunk_size,
         proxy_tail_prime_limit=args.proxy_tail_prime_limit,
         proxy_tail_chunk_size=args.proxy_tail_chunk_size,
+        proxy_deep_tail_prime_limit=args.proxy_deep_tail_prime_limit,
+        proxy_deep_tail_chunk_size=args.proxy_deep_tail_chunk_size,
+        proxy_deep_tail_min_bits=args.proxy_deep_tail_min_bits,
         mr_bases=args.mr_bases,
         truth_check=args.truth_check,
     )
