@@ -151,6 +151,12 @@ and fixed-base Miller-Rabin on deterministic cryptographic-scale odd candidates.
 | Mean pipeline time (ms) | 19.086690 |
 | Speedup vs MR-only | 3.333590x |
 
+## Speedup Scope
+
+- The `2.948363x` and `3.333590x` figures above are candidate-loop speedups for the raw proxy-plus-Miller-Rabin screening path.
+- The end-to-end RSA key-generation speedups later in this report are `2.09x` at `2048` bits and `2.82x` at `4096` bits because they also include survivor Miller-Rabin, RSA assembly, and validation overhead.
+- `benchmark.py` reproduces the candidate-loop sections in this report. `rsa_keygen_benchmark.py` appends the full RSA timing sections below.
+
 ## Calibration Timing Ratios
 
 | Ratio | Value |
@@ -159,7 +165,7 @@ and fixed-base Miller-Rabin on deterministic cryptographic-scale odd candidates.
 | Exact CDL / Proxy | 5.419067x |
 | Proxy / Miller-Rabin | 6.672405x |
 
-## Reproduction
+## Candidate Benchmark Reproduction
 
 Run the benchmark again with:
 

@@ -210,7 +210,13 @@ class WheelPrimeTable:
         return None
 
     def divisor_lower_bound(self, n: int) -> tuple[float, int | None]:
-        """Return a divisor-count lower bound induced by the first small factor found."""
+        """
+        Return a divisor-count lower bound induced by the first small factor found.
+
+        Returns `(2.0, None)` as the survivor sentinel when this interval finds no
+        factor. That floor keeps the candidate on the prime band until another
+        interval or Miller-Rabin resolves it.
+        """
         factor = self.find_small_factor(n)
         if factor is None:
             return 2.0, None

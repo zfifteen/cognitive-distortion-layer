@@ -126,7 +126,7 @@ Benchmarked result:
 - `2.82x` end-to-end speedup across `50` deterministic `4096`-bit RSA keypairs
 - `90.97%` to `91.07%` Miller-Rabin reduction with the prime band preserved
 
-See [`experiments/crypto_prefilter/BENCHMARK_REPORT.md`](experiments/crypto_prefilter/BENCHMARK_REPORT.md) for the measured keygen path and timing breakdown.
+These are full key-generation numbers, not just candidate-loop screening ratios. See [`experiments/crypto_prefilter/BENCHMARK_REPORT.md`](experiments/crypto_prefilter/BENCHMARK_REPORT.md) for the separate candidate-loop and end-to-end timing breakdown.
 
 ### Quick Start with Self-Contained Gist
 

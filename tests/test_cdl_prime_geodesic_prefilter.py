@@ -30,6 +30,15 @@ def test_prefilter_rejects_small_factor_composites_and_keeps_prime_band():
     assert geodesic.proxy_z(composite) < 1.0
 
 
+def test_large_composite_underflow_stays_explicitly_rejected():
+    """Very large rejected composites should clamp cleanly instead of overflowing logs."""
+    geodesic = prefilter.CDLPrimeGeodesicPrefilter(bit_length=2048, namespace="unit:large")
+    composite = 3 * ((1 << 2046) + 1)
+
+    assert geodesic.is_prime_candidate(composite) is False
+    assert geodesic.proxy_z(composite) == 0.0
+
+
 def test_generate_prime_matches_first_baseline_survivor_on_same_stream():
     """The integrated generator should return the same first prime as MR-only search."""
     namespace = "unit:baseline"
@@ -53,6 +62,28 @@ def test_generate_prime_matches_first_baseline_survivor_on_same_stream():
 
     assert actual == expected
     assert prefilter.miller_rabin_fixed_bases(actual, prefilter.DEFAULT_MR_BASES) is True
+
+
+def test_prefilter_exposes_tunable_tables_and_bounds_dedup_memory():
+    """Constructor parameters should tune the tables while large-bit streams skip dedup storage."""
+    small = prefilter.CDLPrimeGeodesicPrefilter(
+        bit_length=32,
+        namespace="unit:small",
+        primary_prime_limit=97,
+        primary_chunk_size=8,
+        tail_prime_limit=127,
+        tail_chunk_size=8,
+        deep_tail_prime_limit=191,
+        deep_tail_chunk_size=8,
+        deep_tail_min_bits=64,
+    )
+    large = prefilter.CDLPrimeGeodesicPrefilter(bit_length=256, namespace="unit:large")
+
+    assert small.primary_table.limit == 97
+    assert small.tail_table.limit == 127
+    assert small.deep_tail_min_bits == 64
+    assert small._seen_candidates == set()
+    assert large._seen_candidates is None
 
 
 def test_generate_rsa_prime_hits_exact_small_scale_fixed_point():

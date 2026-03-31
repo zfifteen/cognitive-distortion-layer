@@ -96,6 +96,8 @@ Use the deterministic geodesic prefilter in `src/python/cdl_prime_geodesic_prefi
 ### Workflow
 
 ```python
+import math
+
 from cdl_prime_geodesic_prefilter import CDLPrimeGeodesicPrefilter
 
 # Scenario: Generate 1024-bit RSA factors for a 2048-bit modulus
@@ -105,9 +107,9 @@ q_prefilter = CDLPrimeGeodesicPrefilter(bit_length=1024, namespace="rsa-demo:q")
 p = p_prefilter.generate_prime(public_exponent=65537)
 q = q_prefilter.generate_prime(public_exponent=65537, excluded_values={p})
 
-# The proxy band is exact for survivors:
-assert p_prefilter.proxy_z(p) == 1.0
-assert q_prefilter.proxy_z(q) == 1.0
+# After generate_prime() returns, the survivor convention aligns with the fixed point:
+assert math.isclose(p_prefilter.proxy_z(p), 1.0, abs_tol=1e-12)
+assert math.isclose(q_prefilter.proxy_z(q), 1.0, abs_tol=1e-12)
 ```
 
 ### Production Result

@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import hashlib
 import math
+import sys
 from typing import Sequence
 
 
@@ -21,6 +22,8 @@ DEFAULT_TAIL_CHUNK_SIZE = 256
 DEFAULT_DEEP_TAIL_PRIME_LIMIT = 1000003
 DEFAULT_DEEP_TAIL_CHUNK_SIZE = 256
 DEFAULT_DEEP_TAIL_MIN_BITS = 4096
+DEFAULT_DEDUPLICATE_BELOW_BITS = 128
+LOG_FLOAT_MIN = math.log(sys.float_info.min)
 
 
 def deterministic_odd_candidate(
@@ -151,7 +154,13 @@ class WheelPrimeTable:
         return None
 
     def divisor_lower_bound(self, n: int) -> tuple[float, int | None]:
-        """Return the divisor lower bound induced by the first factor found."""
+        """
+        Return the divisor lower bound induced by the first factor found.
+
+        Returns `(2.0, None)` as the survivor sentinel when this interval finds no
+        factor. That floor preserves the prime band until another interval or the
+        final Miller-Rabin path resolves the candidate.
+        """
         factor = self.find_small_factor(n)
         if factor is None:
             return 2.0, None
@@ -176,32 +185,57 @@ class CDLPrimeGeodesicPrefilter:
         bit_length: int = 1024,
         namespace: str = DEFAULT_NAMESPACE,
         mr_bases: Sequence[int] = DEFAULT_MR_BASES,
+        primary_prime_limit: int = DEFAULT_PRIMARY_PRIME_LIMIT,
+        primary_chunk_size: int = DEFAULT_PRIMARY_CHUNK_SIZE,
+        tail_prime_limit: int = DEFAULT_TAIL_PRIME_LIMIT,
+        tail_chunk_size: int = DEFAULT_TAIL_CHUNK_SIZE,
+        deep_tail_prime_limit: int = DEFAULT_DEEP_TAIL_PRIME_LIMIT,
+        deep_tail_chunk_size: int = DEFAULT_DEEP_TAIL_CHUNK_SIZE,
+        deep_tail_min_bits: int = DEFAULT_DEEP_TAIL_MIN_BITS,
+        deduplicate_below_bits: int = DEFAULT_DEDUPLICATE_BELOW_BITS,
     ) -> None:
         if bit_length < 2:
             raise ValueError("bit_length must be at least 2")
+        if tail_prime_limit <= primary_prime_limit:
+            raise ValueError("tail_prime_limit must be larger than primary_prime_limit")
+        if deep_tail_prime_limit <= tail_prime_limit:
+            raise ValueError("deep_tail_prime_limit must be larger than tail_prime_limit")
+        if deep_tail_min_bits < 2:
+            raise ValueError("deep_tail_min_bits must be at least 2")
+        if deduplicate_below_bits < 2:
+            raise ValueError("deduplicate_below_bits must be at least 2")
 
         self.bit_length = bit_length
         self.namespace = namespace
         self.mr_bases = tuple(mr_bases)
         self.v = SWEET_SPOT_V
+        self.primary_prime_limit = primary_prime_limit
+        self.primary_chunk_size = primary_chunk_size
+        self.tail_prime_limit = tail_prime_limit
+        self.tail_chunk_size = tail_chunk_size
+        self.deep_tail_prime_limit = deep_tail_prime_limit
+        self.deep_tail_chunk_size = deep_tail_chunk_size
+        self.deep_tail_min_bits = deep_tail_min_bits
         self._candidate_index = 0
-        self._seen_candidates: set[int] = set()
+        self._seen_candidates: set[int] | None = None
+        if bit_length < deduplicate_below_bits:
+            self._seen_candidates = set()
 
         self.primary_table = WheelPrimeTable(
-            DEFAULT_PRIMARY_PRIME_LIMIT,
-            DEFAULT_PRIMARY_CHUNK_SIZE,
+            primary_prime_limit,
+            primary_chunk_size,
         )
         self.tail_table = WheelPrimeTable(
-            DEFAULT_TAIL_PRIME_LIMIT,
-            DEFAULT_TAIL_CHUNK_SIZE,
-            start_exclusive=DEFAULT_PRIMARY_PRIME_LIMIT,
+            tail_prime_limit,
+            tail_chunk_size,
+            start_exclusive=primary_prime_limit,
         )
         self.deep_tail_table = None
-        if bit_length >= DEFAULT_DEEP_TAIL_MIN_BITS:
+        if bit_length >= deep_tail_min_bits:
             self.deep_tail_table = WheelPrimeTable(
-                DEFAULT_DEEP_TAIL_PRIME_LIMIT,
-                DEFAULT_DEEP_TAIL_CHUNK_SIZE,
-                start_exclusive=DEFAULT_TAIL_PRIME_LIMIT,
+                deep_tail_prime_limit,
+                deep_tail_chunk_size,
+                start_exclusive=tail_prime_limit,
             )
 
     def _proxy(self, n: int) -> dict[str, float | int | bool | str | None]:
@@ -225,13 +259,14 @@ class CDLPrimeGeodesicPrefilter:
         if (
             smallest_factor is None
             and self.deep_tail_table is not None
-            and n.bit_length() >= DEFAULT_DEEP_TAIL_MIN_BITS
+            and n.bit_length() >= self.deep_tail_min_bits
         ):
             d_est, smallest_factor = self.deep_tail_table.divisor_lower_bound(n)
             factor_source = "deep_tail"
 
         if smallest_factor is not None:
-            z_hat = math.exp((1.0 - d_est / 2.0) * math.log(n))
+            log_z = (1.0 - d_est / 2.0) * math.log(n)
+            z_hat = 0.0 if log_z < LOG_FLOAT_MIN else math.exp(log_z)
         else:
             z_hat = 1.0
             factor_source = "survivor"
@@ -245,7 +280,15 @@ class CDLPrimeGeodesicPrefilter:
         }
 
     def proxy_z(self, n: int) -> float:
-        """Return the proxy Z-band position for one candidate."""
+        """
+        Return the proxy Z-band position for one candidate.
+
+        `1.0` is the survivor convention for this prefilter: no factor was found in
+        the gated prime tables, so the candidate advances to Miller-Rabin. It is not
+        a primality proof by itself. After `generate_prime()` returns, the surviving
+        candidate has also passed fixed-base Miller-Rabin on the same deterministic
+        path, and the sweet-spot closed form locks confirmed primes to `Z = 1.0`.
+        """
         return float(self._proxy(n)["z_hat"])
 
     def is_prime_candidate(self, n: int) -> bool:
@@ -261,9 +304,10 @@ class CDLPrimeGeodesicPrefilter:
         """Return True when the candidate survives the band test and fixed-base MR."""
         if not self.is_prime_candidate(n):
             return False
-        if public_exponent is not None and math.gcd(n - 1, public_exponent) != 1:
-            return False
         if excluded_values is not None and n in excluded_values:
+            return False
+        # The exponent coprimality check is cheaper than a Miller-Rabin round.
+        if public_exponent is not None and math.gcd(n - 1, public_exponent) != 1:
             return False
         return miller_rabin_fixed_bases(n, self.mr_bases)
 
@@ -276,9 +320,10 @@ class CDLPrimeGeodesicPrefilter:
                 namespace=self.namespace,
             )
             self._candidate_index += 1
-            if candidate in self._seen_candidates:
-                continue
-            self._seen_candidates.add(candidate)
+            if self._seen_candidates is not None:
+                if candidate in self._seen_candidates:
+                    continue
+                self._seen_candidates.add(candidate)
             return candidate
 
     def generate_prime(
