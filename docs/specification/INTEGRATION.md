@@ -1,6 +1,6 @@
 # CDL Integration Guide
 
-This document explains how to integrate the Cognitive Distortion Layer (CDL) into your workflows for prime diagnostics, QMC sampling, and signal normalization.
+This document explains how to integrate the Cognitive Distortion Layer (CDL) into your workflows for prime diagnostics, QMC sampling, signal normalization, and calibrated traversal-rate recovery.
 
 ## Quick Start
 
@@ -13,6 +13,8 @@ kappa_value = cdl.kappa(n)                    # Get curvature
 classification = cdl.classify(n)              # Classify prime/composite
 z_value = cdl.z_normalize(n, v=1.0)          # Apply Z-normalization
 ```
+
+When `v` is unknown, recover it from an observed `Z` sequence under the matching support prior before running the downstream normalization pass.
 
 ## Integration Port 1: Prime Diagnostics Prefilter
 
@@ -265,6 +267,11 @@ for n in sorted(raw_signals.keys()):
 - Variance reduction: 95-99% in typical applications
 - Asymptotic priors from Sprint 4 give a scale-aware baseline for wide-range normalization
 
+**If v is not known ahead of time:**
+- Recover `v` from a calibration batch of observed `Z` values under the matching support prior
+- Reuse that recovered `v` for the downstream normalization pass
+- Record the prior used for recovery; wrong priors can shift the estimate
+
 **When to use:**
 - Signal processing across integer indices
 - Feature engineering for ML models
@@ -281,7 +288,71 @@ From baseline report (n=2-999):
 
 ---
 
-## Integration Port 4: Continuous Signal Pipelines
+## Integration Port 4: Traversal-Rate Recovery and Process Fingerprinting
+
+### Problem
+In many workflows the traversal rate `v` is not known ahead of time. The project now implements a calibrated inverse path that recovers `v` from the distribution of observed `Z` values.
+
+### Solution with `VRecovery`
+Treat the observed `Z` sequence as a process signature. Once the support law is calibrated, recover `v` from moments, density, or a distributional fingerprint.
+
+### Workflow
+
+```python
+import numpy as np
+from v_recovery import VRecovery
+
+# Scenario: observed Z outputs from a known random-support pipeline
+observed_z = np.load("observed_z.npy")
+
+recovery = VRecovery(
+    calibration_n_max=10000,
+    sample_size=len(observed_z),
+    sequence_type="random",
+    reference_trials=16,
+    random_seed=321,
+)
+
+result = recovery.infer_v(observed_z, method="fingerprint")
+print(f"Recovered v = {result.v_estimate:.4f} ± {result.confidence_half_width:.4f}")
+```
+
+### Calibration Rules
+
+**What must match:**
+- The support window or custom support values
+- The sequence regime (`random`, `consecutive`, `prime_biased`, `composite_heavy`)
+- The expected noise level well enough that the recovered distribution remains comparable
+
+**What does not happen:**
+- This does not recover unknown integers from isolated `Z` values
+- This does not remove the need to state the prior
+
+### Rationale
+
+**Why recovery works:**
+- `Z = n / exp(v · κ(n))` changes the full output distribution, not just one scalar
+- Once the support prior is fixed, that distributional shape retains information about `v`
+- The same observed `Z` sample can map to very different `v` values under mismatched priors, so prior declaration is load-bearing
+
+### When to use
+- Adaptive normalization when `v` is not known up front
+- Participant profiling in perceptual or response experiments
+- Auditing number-theoretic generators or samplers
+- Detecting drift between two runs of the same pipeline
+- Comparing whether two observed processes share the same traversal regime
+
+### Example Results
+- Integer-space recovery tests meet MLE `±0.05`, fingerprint `±0.10`, and moment-match `±0.10` tolerances
+- Continuous-domain recovery meets fingerprint `±0.05`
+- The deterministic cognitive pilot recovers participant `v` within `±0.15`
+
+### Operational Note
+If normalized outputs are exposed externally, they can reveal the traversal regime when the support law is known. That makes the channel useful for diagnostics and worth treating carefully in deployed pipelines.
+
+---
+
+## Integration Port 5: Continuous Signal Pipelines
 
 ### Problem
 Some downstream workflows operate on real-valued coordinates or dense manifolds rather than exact integers.

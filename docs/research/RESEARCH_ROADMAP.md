@@ -58,23 +58,22 @@ Tasks:
 
 ---
 
-## Sprint 3: The v-Learning Problem — First Pass (3 days)
-**Goal:** Produce the first concrete formulation of the inverse problem: inferring v from observed Z distributions.
+## Sprint 3: The v-Learning Problem — Prior Robustness and Identifiability (3 days)
+**Goal:** Extend the implemented inverse path into a prior-robust recovery protocol.
 
-This is the highest-priority open frontier. The forward model is Z(n) = n / exp(v · κ(n)).
-Given a sequence of observed Z values without knowing v, can v be recovered?
+The first-pass inverse now exists in code. `src/python/v_recovery.py` implements moment matching, MLE, and a 20-dimensional distributional fingerprint. `tests/test_suite.py` verifies integer-space recovery, continuous-domain recovery, and participant-level recovery in the cognitive pilot. The open frontier is no longer whether `v` can be recovered at all. The open frontier is how reliably it can be recovered when the support law is only partially known.
 
 Tasks:
-- [ ] Frame the inference problem formally: write a 1-page problem statement in experiments/v_inference/PROBLEM.md
-- [ ] Establish a simulation baseline: generate Z sequences at known v ∈ {0.5, 1.0, 2.0} and characterize their distributional fingerprints (mean, variance, skew, kurtosis)
-- [ ] Test v recovery via moment matching: does matching E[Z] or Var[Z] to the known-v distributions recover v reliably?
-- [ ] Test v recovery via MLE: define log-likelihood of observed Z sequence given v, optimize with scipy
-- [ ] Characterize identifiability: at what sample sizes does v become reliably recoverable?
-- [ ] Document findings in EXPERIMENT_REPORT.md regardless of outcome — negative results here are publishable
+- [ ] Write a compact theory note that distinguishes pointwise inversion of unknown `n` from distributional recovery of `v` under calibrated prior
+- [ ] Quantify prior mismatch: generate sequences under `random`, `prime_biased`, and `composite_heavy` supports and measure `v` drift under wrong priors
+- [ ] Characterize identifiability as a function of sample size, noise level, and support window
+- [ ] Test joint inference of sequence regime and `v`
+- [ ] Document a process-fingerprinting protocol for sampler auditing and participant inference
+- [ ] Write `EXPERIMENT_REPORT.md` with matched-prior and mismatched-prior recovery tables
 
-**M1 Max relevance:** scipy + numpy on M1 Max handles n up to ~1M without issue. No GPU needed at this stage.
-**LLM role:** Use Perplexity Space for literature search on parameter inference from transformed distributions. Use xAI Grok for exploratory mathematical reasoning on the identifiability question.
-**Exit criterion:** Written problem statement + at least one inference method with characterized performance.
+**M1 Max relevance:** scipy + numpy on M1 Max handles the calibration grids and sample sweeps without issue. No GPU needed at this stage.
+**LLM role:** Use Perplexity Space for literature on inverse problems from transformed distributions. Use xAI Grok for exploratory reasoning on identifiability and prior mismatch.
+**Exit criterion:** Prior-robust recovery protocol documented with explicit failure modes and sample-size limits.
 
 ---
 
@@ -159,7 +158,7 @@ The M1 Max is well-matched to every sprint in this roadmap:
 | 0 — Restoration | 1 day | Blocker | None |
 | 1 — Threshold Invariance | 2–3 days | Critical | Sprint 0 |
 | 2 — Scaffolding Repair | 1–2 days | High | Sprint 0 |
-| 3 — v-Learning First Pass | 3 days | Highest research value | Sprint 1 |
+| 3 — Prior-Robust v Recovery | 3 days | Highest research value | Sprint 1 |
 | 4 — Analytic Connections | 2–3 days | High theoretical value | Sprint 1 |
 | 5 — Continuous Extension | 2 days | Medium | Sprint 4 |
 | 6 — Public Artifact | 1–2 days | High visibility value | Sprints 1–2 |
