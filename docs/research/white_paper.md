@@ -6,7 +6,7 @@
 
 ## Abstract
 
-This paper presents a novel computational framework for understanding cognitive distortions in mathematical number perception through a geometry-inspired curvature model. By drawing pedagogical analogies to relativistic space-time distortions, I introduce a forward diagnostic mapping that quantifies structural irregularities in discrete integer sequences. My experimental results demonstrate that prime numbers exhibit minimal cognitive curvature, appearing as "geodesics" in the mathematical number space, while composite numbers show significantly higher curvature values. The framework includes empirical validation through machine learning classification experiments and provides both theoretical foundations and practical applications for understanding cognitive mathematical processing.
+This paper presents a novel computational framework for understanding cognitive distortions in mathematical number perception through a geometry-inspired curvature model. By drawing pedagogical analogies to relativistic space-time distortions, I introduce a forward diagnostic mapping that quantifies structural irregularities in discrete integer sequences. My experimental results demonstrate that prime numbers exhibit minimal cognitive curvature, appearing as "geodesics" in the mathematical number space, while composite numbers show significantly higher curvature values. The framework also implements a calibrated inverse path: under an explicit support prior, observed `Z` sequences recover traversal rate `v` through moment matching, maximum likelihood, and distributional fingerprints. The model is therefore pointwise forward in `n` while becoming distributionally inverse in `v`, providing both theoretical foundations and practical applications for understanding cognitive mathematical processing.
 
 **Keywords:** cognitive mathematics, number theory, curvature models, prime classification, cognitive distortion
 
@@ -27,7 +27,8 @@ This work makes several key contributions:
 1. **Theoretical Framework**: A rigorous mathematical model linking divisor density to cognitive curvature
 2. **Computational Implementation**: A complete Python framework for simulating cognitive experiments
 3. **Empirical Validation**: Experimental results demonstrating the practical utility of the curvature model
-4. **Classification Applications**: Machine learning validation showing improved prime/composite discrimination
+4. **Traversal-Rate Recovery**: A calibrated inverse path that recovers `v` from observed `Z` distributions
+5. **Classification Applications**: Machine learning validation showing improved prime/composite discrimination
 
 ## 2. Theoretical Framework
 
@@ -81,6 +82,8 @@ Z(n) = n / exp(v · κ(n))
 ```
 
 This normalization reveals the underlying mathematical structure by compensating for curvature-induced distortions.
+
+For individual integers, this map remains forward: `n` and `v` must be known to compute `Z(n)`. At the sequence level, however, observed `Z` values retain information about `v`. Once the support prior is calibrated, the framework can recover traversal rate from `Z` alone by matching moments, histogram densities, or higher-dimensional distributional fingerprints. The inverse claim is therefore distributional and prior-conditioned, not a pointwise inversion of unknown integers.
 
 ## 3. Experimental Methodology
 
@@ -261,13 +264,20 @@ AI systems could benefit from:
 - Cognitive load modeling in mathematical reasoning systems
 - Biomimetic approaches to mathematical intuition
 
+#### 5.2.4 Process Calibration and Participant Inference
+The recovery path turns traversal rate into a measurable property rather than a fixed external input. This supports:
+- Adaptive normalization when `v` is unknown ahead of time
+- Participant-level inference from observed perceptual response traces
+- Auditing and comparing number-theoretic generators by their `Z`-distribution geometry
+- Detecting process drift when two runs produce different recovered traversal regimes
+
 ### 5.3 Limitations and Scope
 
-#### 5.3.1 Forward Diagnostic Only
-The Z-transformation requires known values of n and traversal rate v. It cannot serve as a standalone inverse function for recovering unknown integers from perceived values.
+#### 5.3.1 No Standalone Inverse for Unknown Integers
+The Z-transformation requires known values of `n` and traversal rate `v` for pointwise normalization. It does not serve as a standalone inverse function for recovering unknown integers from isolated observed values.
 
-#### 5.3.2 Parameter Sensitivity
-Model parameters (cognitive velocity, coupling constant) must be set or estimated rather than inferred purely from data.
+#### 5.3.2 Prior-Conditioned Recovery
+Traversal rate can be inferred from observed `Z` sequences once the support prior is calibrated. The recovery is distributional rather than pointwise, and prior mismatch can shift the recovered value.
 
 #### 5.3.3 Metaphorical Framework
 While the relativistic analogies provide useful intuition, the core mathematics stands independently of physical interpretations.
@@ -279,10 +289,11 @@ While the relativistic analogies provide useful intuition, the core mathematics 
 - Analysis of special number classes (perfect numbers, Mersenne primes, etc.)
 - Cross-cultural validation of cognitive curvature patterns
 
-### 6.2 Parameter Optimization
-- Data-driven estimation of cognitive parameters
-- Individual difference modeling in curvature perception  
-- Adaptive parameter tuning for specific mathematical domains
+### 6.2 Prior-Robust Recovery
+- Joint inference of support law and traversal rate
+- Identifiability bounds as a function of sample size and noise
+- Individual difference modeling in curvature perception
+- Recovery protocols that remain stable under mild prior mismatch
 
 ### 6.3 Theoretical Extensions
 - Connection to analytic number theory (Riemann zeta function, prime number theorem)
@@ -304,9 +315,11 @@ This paper introduces a novel computational framework for understanding cognitiv
 
 3. **Load-Dependent Scaling**: Cognitive load systematically amplifies distortion effects while preserving relative ordering between number types.
 
-4. **Practical Classification**: Simple curvature thresholds achieve ~83% accuracy in distinguishing primes from composites, demonstrating practical utility.
+4. **Recoverable Traversal Rate**: Observed `Z` sequences retain enough information to recover traversal rate `v` under a calibrated support prior, making the model distributionally inverse in process rate.
 
-The framework provides both theoretical insights into the geometric structure of mathematical cognition and practical tools for applications in education, algorithm design, and artificial intelligence. While limitations exist regarding parameter estimation and inverse transformation capabilities, the model offers a foundation for future research in cognitive number theory.
+5. **Practical Classification**: Simple curvature thresholds achieve ~83% accuracy in distinguishing primes from composites, demonstrating practical utility.
+
+The framework provides both theoretical insights into the geometric structure of mathematical cognition and practical tools for applications in education, algorithm design, artificial intelligence, and process inference. The main remaining limitation is not the existence of a recovery path but its dependence on calibrated priors. That leaves a clear next frontier: prior-robust identifiability of `v` and the broader process geometry encoded in `Z`.
 
 My work demonstrates that mathematical perception can be understood through geometric principles, opening new avenues for research at the intersection of mathematics, cognitive science, and computational modeling. The curvature-based approach provides a quantitative foundation for investigating how cognitive systems navigate the landscape of mathematical concepts.
 

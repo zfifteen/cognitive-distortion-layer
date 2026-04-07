@@ -6,7 +6,7 @@
 
 ## Overview
 
-The Cognitive Distortion Layer (CDL) provides a unified curvature signal κ(n) for analyzing integer structure across the Z Framework. It treats primes as "low-distortion geodesics" and composites as "high-distortion terrain," enabling consistent diagnostics, sampling, and normalization.
+The Cognitive Distortion Layer (CDL) provides a unified curvature signal κ(n) for analyzing integer structure across the Z Framework. It treats primes as "low-distortion geodesics" and composites as "high-distortion terrain," enabling consistent diagnostics, sampling, normalization, and calibrated traversal-rate recovery from observed `Z` sequences.
 
 ## Core Primitives
 
@@ -81,7 +81,7 @@ Z(n) = n / exp(v · κ(n))
 
 **Parameters:**
 - `n`: Integer to normalize
-- `v`: Task-specific scale parameter
+- `v`: Task-specific scale parameter; supplied directly in forward use and recoverable in calibrated inverse use
 - `κ(n)`: Curvature of n
 
 **Parameter Guidelines:**
@@ -98,6 +98,37 @@ Z(n) = n / exp(v · κ(n))
 - Z(n) ≤ n (normalization reduces value)
 - Stronger correction for high-κ numbers
 - Preserves ordering within low-κ neighborhoods
+- Pointwise forward in `n`
+- Distributionally inverse in `v` under an explicit calibrated prior
+- Exact divisor-family fixed points occur when `v = e² / d` for a family with constant divisor count `d`
+
+### 4. Companion Inference Module: Traversal-Rate Recovery
+
+**Module:**
+```
+VRecovery
+```
+
+**Interface:**
+```
+infer_v({Z₁, Z₂, ..., Zₖ}, prior) → v_estimate
+```
+
+**Protocol:**
+1. Calibrate a support table or custom support prior
+2. Specify the expected sequence regime (`random`, `consecutive`, `prime_biased`, or `composite_heavy`)
+3. Compare the observed `Z` sequence against known-`v` references
+4. Return the best `v` estimate and confidence width
+
+**Implemented Methods:**
+- Moment matching on `log Z`
+- Histogram-density maximum likelihood
+- 20-dimensional distributional fingerprint matching
+
+**Scope:**
+- Recovers `v` from observed `Z` values alone once the prior is calibrated
+- Does not recover unknown integers from isolated `Z` values
+- Treats `v` as an observable of the source process, not only a caller-supplied knob
 
 ## Integration Ports
 
@@ -129,6 +160,16 @@ Z(n) = n / exp(v · κ(n))
 3. Use {Z₁, Z₂, ..., Zₖ} as stable feature scale
 
 **Benefit:** Removes scale-dependent noise, improves cross-range comparisons
+
+### Traversal-Rate Inference
+
+**Workflow:**
+1. Collect an observed `Z` sequence from a known support regime
+2. Build `VRecovery` against the matching support table or custom support
+3. Infer `v` from the sequence distribution
+4. Feed the recovered `v` into downstream normalization, participant profiling, or pipeline auditing
+
+**Benefit:** Turns traversal rate into a measurable property of the generating or perceptual process
 
 ### Continuous Signal Pipeline
 
@@ -162,6 +203,30 @@ Z(n) = n / exp(v · κ(n))
   3. Compare downstream metric variance
 - **Expected:** Z-normalized version shows lower variance
 
+### Integer v-Recovery
+- **Purpose:** Verify calibrated inverse recovery on discrete support
+- **Protocol:**
+  1. Generate synthetic `Z` sequences at known `v`
+  2. Recover `v` with moment matching, MLE, and fingerprint methods
+  3. Compare estimates against the known value
+- **Expected:** Integer-space tests meet MLE `±0.05`, fingerprint `±0.10`, and moment-match `±0.10` tolerances
+
+### Continuous v-Recovery
+- **Purpose:** Verify transfer of the recovery path onto `κ_smooth`
+- **Protocol:**
+  1. Generate continuous-domain `Z` sequences at known `v`
+  2. Recover `v` with the calibrated continuous support
+  3. Compare recovered `v` against the known value
+- **Expected:** Continuous fingerprint recovery meets `±0.05`
+
+### Participant Recovery
+- **Purpose:** Verify that perceptual-response traces retain recoverable traversal-rate information
+- **Protocol:**
+  1. Simulate a participant at known `v`
+  2. Recover `v` from the observed response sequence
+  3. Compare the hybrid integer/smooth path against the pure continuous path
+- **Expected:** Deterministic pilot recovery meets `±0.15`, and the hybrid path outperforms the pure continuous calibration
+
 ### Stability Check
 - **Purpose:** Verify monotonic behavior within classes
 - **Protocol:**
@@ -183,8 +248,9 @@ Z(n) = n / exp(v · κ(n))
 ✓ This specification document exists  
 ✓ Baseline report reproduces seed results  
 ✓ Hold-out validation shows consistent separation  
-✓ Integration notes document three use cases  
+✓ Integration notes document representative downstream and recovery use cases
 ✓ All parameters and thresholds are documented  
+✓ Traversal-rate recovery is documented with calibrated scope
 ✓ No hidden heuristics in code comments  
 
 ## Guardrails
@@ -202,13 +268,17 @@ Z(n) = n / exp(v · κ(n))
 | Small-n bias | Treat seed as smoke test only; require hold-out confirmation |
 | Range drift | Publish fit-on-seed protocol; make threshold shifts visible |
 | d(n) cost | Scope computation to prefilter windows; cache aggressively |
-| Parameter confusion | Document v per task; provide clear guidelines |
+| Prior mismatch in v recovery | Make the support prior explicit; report recovery against matched and mismatched priors |
+| Parameter confusion | Document v per task; when recovered, record the calibrated prior alongside the estimate |
 
 ## Future Extensions
 
 - Multi-scale threshold maps (adaptive per range)
 - Cached divisor lookups for hot paths
 - Integration with ML-based primality classifiers
+- Joint inference of support regime and `v`
+- Robustness studies under prior mismatch and sample-size limits
+- Divisor-family fixed-point band catalogs
 - Cross-framework signal harmonization
 - Continuous-domain extensions via κ_smooth(x)
 

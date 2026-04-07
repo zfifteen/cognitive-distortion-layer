@@ -21,7 +21,12 @@ This research introduces a novel computational framework for understanding cogni
 - **347% increase** in average distortion from baseline (0.0) to high load (0.7)
 - **Preserved relative ordering** between primes and composites across all load levels
 
-### 4. Machine Learning Validation
+### 4. Traversal-Rate Recovery
+- **Traversal rate is recoverable** from observed `Z` sequences once the support prior is calibrated
+- **Implemented recovery methods** include moment matching, MLE, and a 20-dimensional distributional fingerprint
+- The framework therefore measures both integer structure and process regime
+
+### 5. Machine Learning Validation
 - **99.5% classification accuracy** using raw curvature features for prime/composite distinction
 - **Simple threshold methods** achieve ~83% accuracy based on curvature alone
 - Framework provides practical tools for automated mathematical classification
@@ -48,6 +53,11 @@ Where d(n) is the divisor count and ln(n) provides magnitude scaling. This captu
 - **Factorization approaches**: Based on divisor density analysis
 - **Feature engineering**: Curvature-based representations for ML
 
+### Calibration and Auditing
+- **Adaptive normalization**: Recover `v` before applying `Z` in unknown-rate settings
+- **Process fingerprinting**: Distinguish generators or samplers by their `Z`-distribution geometry
+- **Participant inference**: Treat `v` as a measurable property of observed response traces
+
 ### Artificial Intelligence
 - **Mathematical reasoning**: Cognitive load modeling in AI systems
 - **Biomimetic approaches**: Human-like mathematical intuition
@@ -56,10 +66,10 @@ Where d(n) is the divisor count and ln(n) provides magnitude scaling. This captu
 ## Technical Implementation
 
 The complete framework is implemented in Python with:
-- `CognitiveModel` class for all mathematical transformations
-- Experimental simulation and visualization tools
-- Machine learning validation components
-- CSV data export for further analysis
+- `src/python/cdl.py` for canonical curvature, classification, and Z-normalization
+- `src/python/v_recovery.py` for calibrated traversal-rate recovery
+- `src/python/cdl_continuous.py` for continuous-domain recovery transfer
+- `src/python/cognitive_pilot.py` for participant-level inference from observed traces
 
 ## Impact and Significance
 
@@ -68,18 +78,19 @@ This work bridges pure mathematics, cognitive science, and computational modelin
 1. **Providing quantitative measures** for mathematical complexity intuition
 2. **Validating geometric approaches** to discrete mathematical structures
 3. **Enabling practical applications** in education and algorithm design
-4. **Opening new research directions** in cognitive number theory
+4. **Opening an inverse research direction** in which traversal rate becomes an observable
 
 ## Future Directions
 
 - **Extended range studies** for larger numbers and special classes
 - **Cross-cultural validation** of cognitive curvature patterns
-- **Parameter optimization** through data-driven methods
+- **Prior-robust recovery** and joint inference of support law with `v`
+- **Divisor-family fixed-point studies** beyond the prime band
 - **Theoretical connections** to analytic number theory
 
 ## Conclusion
 
-The curvature-based framework successfully quantifies the cognitive experience of mathematical number processing, providing both theoretical insights and practical tools. Prime numbers emerge as natural "geodesics" in mathematical space, while composite numbers create increasingly complex cognitive landscapes. This geometric perspective opens new avenues for understanding the intersection of mathematics, cognition, and computation.
+The curvature-based framework successfully quantifies the cognitive experience of mathematical number processing, providing both theoretical insights and practical tools. Prime numbers emerge as natural "geodesics" in mathematical space, while composite numbers create increasingly complex cognitive landscapes. The implemented recovery path shows that traversal rate is not only a user choice but also a measurable property of observed distortion patterns when the support regime is calibrated. This geometric perspective opens new avenues for understanding the intersection of mathematics, cognition, and computation.
 
 ---
 

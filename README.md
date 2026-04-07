@@ -1,10 +1,10 @@
-# Cognitive Model: A Forward Diagnostic Framework for Number-Theoretic Distortion
+# Cognitive Model: Curvature Diagnostics and Traversal-Rate Recovery for Number-Theoretic Distortion
 
 ![Cognitive Distortion Layer Banner](assets/readme-banners/banner.png)
 
 ## Overview
 
-This repository presents a theoretical and computational framework for analyzing discrete integer sequences through a geometry-inspired "curvature" model. By drawing a pedagogical analogy to relativistic distortions, we define a **forward diagnostic map** that highlights structural irregularities—especially those arising from divisor density. This model is intended for **structural analysis**, not for blind inversion of unknown values.
+This repository presents a theoretical and computational framework for analyzing discrete integer sequences through a geometry-inspired curvature model. By drawing a pedagogical analogy to relativistic distortions, it defines a **forward diagnostic map** that highlights structural irregularities—especially those arising from divisor density—and a calibrated recovery path that infers traversal rate `v` from observed `Z` sequences under an explicit support prior. The model remains **pointwise forward in n** and does not perform blind inversion of unknown integers, but it is now **distributionally inverse in v** when the source regime is calibrated.
 
 **🆕 The Cognitive Distortion Layer (CDL)** standardizes κ(n) as the shared curvature signal across the Z Framework, providing unified primitives for prime diagnostics, QMC sampling, and signal normalization. Source modules now live under [`src/python/`](src/python), with specifications in [`docs/specification/CDL_SPECIFICATION.md`](docs/specification/CDL_SPECIFICATION.md) and [`docs/specification/INTEGRATION.md`](docs/specification/INTEGRATION.md).
 
@@ -27,7 +27,7 @@ This repository presents a theoretical and computational framework for analyzing
    \Delta_n = v \cdot \kappa(n)
    $$
 
-   * **v**: A user-defined "traversal rate" parameter (e.g., cognition or iteration speed).
+   * **v**: A traversal-rate parameter. In forward use it may be user-supplied. In recovery use it is inferred from observed `Z` values relative to a calibrated support prior.
    * **$\Delta_n$**: Modeled distortion at $n$.
    * **Purpose**: Encodes how rapid progression through integers skews apparent structure.
 
@@ -46,8 +46,9 @@ This repository presents a theoretical and computational framework for analyzing
    Z(n) \;=\; \frac{n}{\exp\bigl(v \cdot \kappa(n)\bigr)}
    $$
 
-   * **Forward diagnostic use only**: Assumes knowledge of $n$ and $v$ to normalize distortion.
-   * **Outcome**: Reveals underlying structural stability, particularly for primes where $\kappa(n)$ is minimal.
+   * **Pointwise forward in $n$**: Assumes knowledge of $n$ and $v$ to normalize a specific integer.
+   * **Distributionally inverse in $v$**: Under a calibrated support or sequence prior, observed `Z` values recover traversal rate through moment matching, MLE, or distributional fingerprints.
+   * **Outcome**: Reveals underlying structural stability and exposes the process regime that generated the observed distortion pattern.
 
 ## Empirical Validation
 
@@ -69,7 +70,6 @@ These results demonstrate that primes appear as "minimal-curvature geodesics" wi
 * **Source Layout**:
 
   * `src/python/cdl.py`: Canonical CDL primitives
-  * `src/python/cdl_prime_geodesic_prefilter.py`: Deterministic cryptographic prime prefilter and generator
   * `src/python/cdl_continuous.py`: Continuous-domain CDL extensions
   * `src/python/v_recovery.py`: Traversal-rate inference
   * `src/python/cognitive_pilot.py`: Sprint 6 cognitive pilot pipeline
@@ -107,26 +107,44 @@ normalized_signals = cdl.signal_normalize_pipeline(raw_signals, v=1.0)
 
 **See [`docs/specification/INTEGRATION.md`](docs/specification/INTEGRATION.md) for complete integration examples.**
 
-### Deterministic Cryptographic Prime Generation
+### Quick Start with Traversal-Rate Recovery
 
-The production CDL geodesic prefilter now ships as `src/python/cdl_prime_geodesic_prefilter.py`. It applies the sweet-spot band at `v = e² / 2`, rejects composites through deterministic gated prime tables, and then runs fixed-base Miller-Rabin plus final `sympy.isprime` confirmation on survivors.
+The distributional recovery path treats `v` as an observable once the source regime is calibrated:
 
 ```python
-from cdl_prime_geodesic_prefilter import CDLPrimeGeodesicPrefilter
+import numpy as np
+from v_recovery import VRecovery, generate_z_sequence
 
-p_prefilter = CDLPrimeGeodesicPrefilter(bit_length=1024, namespace="rsa-demo:p")
-q_prefilter = CDLPrimeGeodesicPrefilter(bit_length=1024, namespace="rsa-demo:q")
+rng = np.random.default_rng(321)
+recovery = VRecovery(
+    calibration_n_max=3000,
+    sample_size=500,
+    sequence_type="random",
+    reference_trials=10,
+    random_seed=321,
+)
 
-p = p_prefilter.generate_prime(public_exponent=65537)
-q = q_prefilter.generate_prime(public_exponent=65537, excluded_values={p})
+z_sequence, _ = generate_z_sequence(
+    numbers=recovery.numbers,
+    kappas=recovery.kappas,
+    rng=rng,
+    v=1.5,
+    sample_size=500,
+    sequence_type="random",
+    prime_mask=recovery.prime_mask,
+)
+
+estimate = recovery.infer_v(z_sequence, method="fingerprint")
+print(estimate.v_estimate)
 ```
 
-Benchmarked result:
-- `2.09x` end-to-end speedup across `300` deterministic `2048`-bit RSA keypairs
-- `2.82x` end-to-end speedup across `50` deterministic `4096`-bit RSA keypairs
-- `90.97%` to `91.07%` Miller-Rabin reduction with the prime band preserved
+The same recovery path is used in `src/python/cognitive_pilot.py` to recover participant-level `v` values from observed response traces.
 
-These are full key-generation numbers, not just candidate-loop screening ratios. See [`experiments/crypto_prefilter/BENCHMARK_REPORT.md`](experiments/crypto_prefilter/BENCHMARK_REPORT.md) for the separate candidate-loop and end-to-end timing breakdown.
+### Deterministic Cryptographic Prime Generation
+
+The geodesic prime prefilter has moved to the standalone repository [`geodesic-prime-prefilter`](https://github.com/zfifteen/geodesic-prime-prefilter).
+
+CDL remains the research home for the core curvature primitives and the broader Z Framework. The standalone repository now carries the production Python package, golden vectors, manual validation flow, and the multi-language porting surface for the prefilter.
 
 ### Quick Start with Self-Contained Gist
 
@@ -184,24 +202,30 @@ python scripts/reproduce_sprints.py
 - Seed set (n=2-49): Prime avg κ = 0.739, Composite avg κ = 2.252, Accuracy = 83.7%
 - Hold-out (n=50-10K): Accuracy = 88.2%, maintains separation pattern
 - Z-normalization: 99.2% variance reduction
+- v recovery: integer-space tests meet MLE `±0.05`, fingerprint `±0.10`, and moment-match `±0.10` tolerances; continuous recovery meets fingerprint `±0.05`; the deterministic cognitive pilot recovers participant `v` within `±0.15`
 - All acceptance criteria met ✓
 
 The baseline report is written to `artifacts/reports/baseline_report.json`.
 
 ## Limitations & Scope
 
-1. **Forward Diagnostic Only**
+1. **No Standalone Inverse for Unknown Integers**
 
-   * The Z-transformation **requires** known $n$ and rate $v$. It **does not** serve as a standalone inverse to recover unknown integers from perceived values.
-2. **Context-Dependent Parameters**
+   * The Z-transformation **requires** known $n$ and rate $v$ for pointwise normalization. It **does not** recover unknown integers from isolated observed values.
+2. **Distributional Recovery Requires Calibration**
 
-   * Parameters like $v$ (traversal rate) must be set or estimated; values are not inferred solely from data.
-3. **Metaphorical Analogy**
+   * Traversal rate `v` is recoverable from observed `Z` sequences only relative to an explicit support prior or calibrated sequence regime. Prior mismatch can shift the recovered value.
+3. **Process Channel Exposure**
+
+   * Because `Z` distributions retain information about `v`, normalized outputs can fingerprint the generating or perceptual pipeline when the support law is known.
+4. **Metaphorical Analogy**
 
    * References to relativity and geodesics are pedagogical. The core mathematics stands independently of physical interpretations.
 
 ## Future Directions
 
-* **Parameter Estimation**: Explore data-driven methods to approximate traversal rates from observed distortions.
+* **Prior-Robust Recovery**: Infer `v` reliably when the support law is only partially known, and characterize identifiability under prior mismatch.
+* **Process Fingerprinting**: Use recovered `v` and `Z` fingerprints to audit samplers, detect drift, and compare generation regimes.
+* **Divisor-Family Resonances**: Characterize the fixed-point law `v = e^2 / d` across exact divisor-count families beyond the prime `d = 2` band.
 * **Enhanced Classification**: Integrate curvature features into machine-learning classifiers for primality testing.
 * **Theoretical Extensions**: Investigate connections between divisor-based curvature and deeper analytic number theory.

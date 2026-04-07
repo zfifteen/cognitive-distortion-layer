@@ -1,6 +1,6 @@
 # CDL Integration Guide
 
-This document explains how to integrate the Cognitive Distortion Layer (CDL) into your workflows for prime diagnostics, QMC sampling, and signal normalization.
+This document explains how to integrate the Cognitive Distortion Layer (CDL) into your workflows for prime diagnostics, QMC sampling, signal normalization, and calibrated traversal-rate recovery.
 
 ## Quick Start
 
@@ -13,6 +13,8 @@ kappa_value = cdl.kappa(n)                    # Get curvature
 classification = cdl.classify(n)              # Classify prime/composite
 z_value = cdl.z_normalize(n, v=1.0)          # Apply Z-normalization
 ```
+
+When `v` is unknown, recover it from an observed `Z` sequence under the matching support prior before running the downstream normalization pass.
 
 ## Integration Port 1: Prime Diagnostics Prefilter
 
@@ -91,45 +93,26 @@ likely_primes, likely_composites = cdl.prime_diagnostic_prefilter(candidates)
 RSA, Diffie-Hellman, and ECC key generation spend most of their search time on composite candidates that never need a full Miller-Rabin path.
 
 ### Solution with the Sweet-Spot Band
-Use the deterministic geodesic prefilter in `src/python/cdl_prime_geodesic_prefilter.py` to keep candidates on the sweet-spot band at `v = e² / 2`, reject composites as soon as a concrete factor appears in the gated prime tables, and run fixed-base Miller-Rabin plus final `sympy.isprime` confirmation on survivors.
+This integration port has moved to the standalone repository [`geodesic-prime-prefilter`](https://github.com/zfifteen/geodesic-prime-prefilter).
 
 ### Workflow
-
-```python
-import math
-
-from cdl_prime_geodesic_prefilter import CDLPrimeGeodesicPrefilter
-
-# Scenario: Generate 1024-bit RSA factors for a 2048-bit modulus
-p_prefilter = CDLPrimeGeodesicPrefilter(bit_length=1024, namespace="rsa-demo:p")
-q_prefilter = CDLPrimeGeodesicPrefilter(bit_length=1024, namespace="rsa-demo:q")
-
-p = p_prefilter.generate_prime(public_exponent=65537)
-q = q_prefilter.generate_prime(public_exponent=65537, excluded_values={p})
-
-# After generate_prime() returns, the survivor convention aligns with the fixed point:
-assert math.isclose(p_prefilter.proxy_z(p), 1.0, abs_tol=1e-12)
-assert math.isclose(q_prefilter.proxy_z(q), 1.0, abs_tol=1e-12)
-```
+Use the standalone repository for the production package, benchmark scripts, and manual validation flow. CDL no longer ships the extracted prefilter implementation or its benchmark artifacts.
 
 ### Production Result
 
-- `300` deterministic `2048`-bit RSA keypairs: `2.09x` end-to-end speedup (`291938.126792` ms down to `139942.831833` ms)
-- `50` deterministic `4096`-bit RSA keypairs: `2.82x` end-to-end speedup (`757750.922792` ms down to `268557.631625` ms)
-- Miller-Rabin reduction: `90.97%` at `2048` bits and `91.07%` at `4096` bits
-- Prime invariant: calibration held `29/29` fixed points with `0` composite false fixed points, and every final RSA factor stayed on the `Z = 1.0` band once primality was confirmed
+- Standalone repository: [`geodesic-prime-prefilter`](https://github.com/zfifteen/geodesic-prime-prefilter)
+- Production package: `geodesic_prime_prefilter`
+- Benchmarked result carried forward there: `2.09x` end-to-end speedup at `2048` bits and `2.82x` at `4096` bits
 
 ### Rationale
 
-- The gated prime tables strip easy composites before the expensive survivor regime.
-- The sweet-spot closed form keeps the prime class locked to `Z(p) = 1.0`.
-- `generate_prime()` preserves the benchmarked search shape: CDL geodesic prefilter first, fixed-base Miller-Rabin second, final primality confirmation last.
+- The production implementation now evolves independently from the research repo.
+- CDL remains the canonical home for `kappa`, `classify`, `z_normalize`, and the broader framework work.
 
 ### When to use
 
-- RSA key generation
-- Safe-prime search pipelines that already end in a deterministic or fixed-base probable-prime test
-- Batch cryptographic key provisioning where deterministic streams and reproducibility matter
+- Use the standalone repository when you need the production cryptographic prefilter.
+- Use CDL directly when you need the canonical curvature primitives and research integrations.
 
 ---
 
@@ -284,6 +267,11 @@ for n in sorted(raw_signals.keys()):
 - Variance reduction: 95-99% in typical applications
 - Asymptotic priors from Sprint 4 give a scale-aware baseline for wide-range normalization
 
+**If v is not known ahead of time:**
+- Recover `v` from a calibration batch of observed `Z` values under the matching support prior
+- Reuse that recovered `v` for the downstream normalization pass
+- Record the prior used for recovery; wrong priors can shift the estimate
+
 **When to use:**
 - Signal processing across integer indices
 - Feature engineering for ML models
@@ -300,7 +288,71 @@ From baseline report (n=2-999):
 
 ---
 
-## Integration Port 4: Continuous Signal Pipelines
+## Integration Port 4: Traversal-Rate Recovery and Process Fingerprinting
+
+### Problem
+In many workflows the traversal rate `v` is not known ahead of time. The project now implements a calibrated inverse path that recovers `v` from the distribution of observed `Z` values.
+
+### Solution with `VRecovery`
+Treat the observed `Z` sequence as a process signature. Once the support law is calibrated, recover `v` from moments, density, or a distributional fingerprint.
+
+### Workflow
+
+```python
+import numpy as np
+from v_recovery import VRecovery
+
+# Scenario: observed Z outputs from a known random-support pipeline
+observed_z = np.load("observed_z.npy")
+
+recovery = VRecovery(
+    calibration_n_max=10000,
+    sample_size=len(observed_z),
+    sequence_type="random",
+    reference_trials=16,
+    random_seed=321,
+)
+
+result = recovery.infer_v(observed_z, method="fingerprint")
+print(f"Recovered v = {result.v_estimate:.4f} ± {result.confidence_half_width:.4f}")
+```
+
+### Calibration Rules
+
+**What must match:**
+- The support window or custom support values
+- The sequence regime (`random`, `consecutive`, `prime_biased`, `composite_heavy`)
+- The expected noise level well enough that the recovered distribution remains comparable
+
+**What does not happen:**
+- This does not recover unknown integers from isolated `Z` values
+- This does not remove the need to state the prior
+
+### Rationale
+
+**Why recovery works:**
+- `Z = n / exp(v · κ(n))` changes the full output distribution, not just one scalar
+- Once the support prior is fixed, that distributional shape retains information about `v`
+- The same observed `Z` sample can map to very different `v` values under mismatched priors, so prior declaration is load-bearing
+
+### When to use
+- Adaptive normalization when `v` is not known up front
+- Participant profiling in perceptual or response experiments
+- Auditing number-theoretic generators or samplers
+- Detecting drift between two runs of the same pipeline
+- Comparing whether two observed processes share the same traversal regime
+
+### Example Results
+- Integer-space recovery tests meet MLE `±0.05`, fingerprint `±0.10`, and moment-match `±0.10` tolerances
+- Continuous-domain recovery meets fingerprint `±0.05`
+- The deterministic cognitive pilot recovers participant `v` within `±0.15`
+
+### Operational Note
+If normalized outputs are exposed externally, they can reveal the traversal regime when the support law is known. That makes the channel useful for diagnostics and worth treating carefully in deployed pipelines.
+
+---
+
+## Integration Port 5: Continuous Signal Pipelines
 
 ### Problem
 Some downstream workflows operate on real-valued coordinates or dense manifolds rather than exact integers.
