@@ -10,41 +10,25 @@ This repository presents a theoretical and computational framework for analyzing
 
 ## Key Concepts
 
-1. **Curvature Function**
-
-   $$
-   \kappa(n) = \frac{d(n) \cdot \ln(n)}{e^2}
-   $$
+1. **Curvature Function**: $\kappa(n) = \frac{d(n) \cdot \ln(n)}{e^2}$
 
    * **d(n)**: Divisor count of $n$ (i.e., $\sigma_0(n)$).
    * **ln(n)**: Natural logarithm of $n$.
    * **Normalization**: Constant $e^2$ determined empirically.
    * **Interpretation**: Higher divisor counts and larger values yield greater local "curvature".
 
-2. **Distortion Mapping (Forward Model)**
-
-   $$
-   \Delta_n = v \cdot \kappa(n)
-   $$
+2. **Distortion Mapping (Forward Model)**: $\Delta_n = v \cdot \kappa(n)$
 
    * **v**: A traversal-rate parameter. In forward use it may be user-supplied. In recovery use it is inferred from observed `Z` values relative to a calibrated support prior.
    * **$\Delta_n$**: Modeled distortion at $n$.
    * **Purpose**: Encodes how rapid progression through integers skews apparent structure.
 
-3. **Perceived Value**
-
-   $$
-   n_{\text{perceived}} = n \times \exp\bigl(\Delta_n\bigr)
-   $$
+3. **Perceived Value**: $n_{\text{perceived}} = n \times \exp\bigl(\Delta_n\bigr)$
 
    * Applies exponential scaling to the true integer based on $\Delta_n$.
    * Emphasizes how distortion amplifies structural irregularities in composites.
 
-4. **Z-Transformation (Context-Dependent Normalization)**
-
-   $$
-   Z(n) \;=\; \frac{n}{\exp\bigl(v \cdot \kappa(n)\bigr)}
-   $$
+4. **Z-Transformation (Context-Dependent Normalization)**: $Z(n) \;=\; \frac{n}{\exp\bigl(v \cdot \kappa(n)\bigr)}$
 
    * **Pointwise forward in $n$**: Assumes knowledge of $n$ and $v$ to normalize a specific integer.
    * **Distributionally inverse in $v$**: Under a calibrated support or sequence prior, observed `Z` values recover traversal rate through moment matching, MLE, or distributional fingerprints.
