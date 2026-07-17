@@ -1,0 +1,15 @@
+{
+  "entry_jump_mean": -19.74956510754573,
+  "entry_jump_std": 16.576860343770644,
+  "exit_jump_mean": 19.83908170790918,
+  "exit_jump_std": 16.480577880740007,
+  "mid_composite_jump_mean": -0.009392650561852107,
+  "mid_composite_jump_std": 18.04806075654401,
+  "frac_entry_neg": 0.999691738594328,
+  "frac_exit_pos": 1.0,
+  "acc_kappa_only": 0.9972330566389972,
+  "acc_absJ_only": 0.8818881888188819,
+  "acc_kappa_plus_c_absJ": 0.9972330566389972,
+  "best_c": 0.0,
+  "prime_rate": 0.10814414774810814
+}

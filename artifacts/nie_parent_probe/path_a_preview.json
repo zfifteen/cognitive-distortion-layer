@@ -1,0 +1,64 @@
+{
+  "N": 30000,
+  "total_gaps": 3243,
+  "divergent_first": 0,
+  "rate": 0.0,
+  "by_gap_bucket": {
+    "2": {
+      "gaps": 467,
+      "div_first": 0,
+      "set_diff": 0
+    },
+    "4": {
+      "gaps": 467,
+      "div_first": 0,
+      "set_diff": 103
+    },
+    "6": {
+      "gaps": 726,
+      "div_first": 0,
+      "set_diff": 278
+    },
+    "8": {
+      "gaps": 264,
+      "div_first": 0,
+      "set_diff": 183
+    },
+    "14": {
+      "gaps": 157,
+      "div_first": 0,
+      "set_diff": 151
+    },
+    "10": {
+      "gaps": 295,
+      "div_first": 0,
+      "set_diff": 252
+    },
+    "12": {
+      "gaps": 327,
+      "div_first": 0,
+      "set_diff": 309
+    },
+    "18": {
+      "gaps": 151,
+      "div_first": 0,
+      "set_diff": 147
+    },
+    "20-49": {
+      "gaps": 279,
+      "div_first": 0,
+      "set_diff": 271
+    },
+    "16": {
+      "gaps": 108,
+      "div_first": 0,
+      "set_diff": 105
+    },
+    "50-99": {
+      "gaps": 2,
+      "div_first": 0,
+      "set_diff": 2
+    }
+  },
+  "examples": []
+}

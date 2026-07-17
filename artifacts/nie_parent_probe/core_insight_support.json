@@ -1,0 +1,13 @@
+{
+  "insight_id": "excess_geodesic_coordinate",
+  "definition": "E(n)=(d(n)-2)*ln(n)/e^2 = kappa(n) - 2*ln(n)/e^2",
+  "claim": "Fixed-tau drift is a chart artifact; excess over prime geodesic sheet is scale-invariant classifier residual",
+  "support": {
+    "adaptive_map_ratio_to_ceil": "approaches 1 for large windows",
+    "fixed_tau_1.5_recall_collapse": "when slack=1.5-2lnn/e2 < 0",
+    "holdout_88pct": "near composite base rate once primes all rejected"
+  },
+  "falsifier": "Optimal full-recall tau on [a,b] with a>sqrt(b) diverges from 2ln(b)/e^2 by Omega(1) as b->inf, or fixed-delta excess on hybrid/smooth kappa underperforms range-adaptive raw kappa by >2pp accuracy on holdout decades",
+  "path_a_negative": "first argmin d vs kappa: 0 divergences in gaps through 2e5; ln weight cannot reorder first GWR when gap/n small",
+  "path_c_negative": "jump features add no classification lift beyond kappa level"
+}
