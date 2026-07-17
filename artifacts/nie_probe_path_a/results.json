@@ -1,0 +1,133 @@
+{
+  "probe": "path_a_kappa_vs_d_gap_winner",
+  "status": "empirical_only",
+  "limit": 1000000,
+  "n_primes": 78498,
+  "n_gaps": 78496,
+  "n_empty_interiors": 1,
+  "n_differ": 0,
+  "diverge_rate": 0.0,
+  "n_inversion_feasible_by_ln_span": 0,
+  "fraction_lock_margin_positive": 1.0,
+  "min_lock_margin": 0.004629629629629539,
+  "mean_lock_margin": 0.21045079960058324,
+  "max_gap_len": 114,
+  "max_rel_ln": 0.46497352071792686,
+  "mean_rel_ln": 3.408693659033114e-05,
+  "mean_log_gap": 0.0001620067426257593,
+  "mean_rel_ln_task_near_minus_one": -0.9998379932573753,
+  "max_ln_span_ratio": 1.1073093649624544,
+  "min_min_step_ratio": 1.0046296296296295,
+  "corr_differ_vs_gap_len": null,
+  "corr_differ_vs_rel_ln": null,
+  "corr_differ_vs_lock_margin": null,
+  "rate_by_gap_len_bin": {
+    "g13-30": {
+      "n": 23601,
+      "differ": 0,
+      "rate": 0.0
+    },
+    "g3-6": {
+      "n": 21692,
+      "differ": 0,
+      "rate": 0.0
+    },
+    "g31-100": {
+      "n": 4379,
+      "differ": 0,
+      "rate": 0.0
+    },
+    "g7-12": {
+      "n": 20653,
+      "differ": 0,
+      "rate": 0.0
+    },
+    "g<=2": {
+      "n": 8169,
+      "differ": 0,
+      "rate": 0.0
+    },
+    "g>100": {
+      "n": 2,
+      "differ": 0,
+      "rate": 0.0
+    }
+  },
+  "rate_by_rel_ln_bin": {
+    "rl1e-2-1e-1": {
+      "n": 22,
+      "differ": 0,
+      "rate": 0.0
+    },
+    "rl1e-3-1e-2": {
+      "n": 145,
+      "differ": 0,
+      "rate": 0.0
+    },
+    "rl1e-4-1e-3": {
+      "n": 1040,
+      "differ": 0,
+      "rate": 0.0
+    },
+    "rl<1e-4": {
+      "n": 77285,
+      "differ": 0,
+      "rate": 0.0
+    },
+    "rl>=1e-1": {
+      "n": 4,
+      "differ": 0,
+      "rate": 0.0
+    }
+  },
+  "differ_direction": {
+    "leftward_wk_lt_wd": 0,
+    "rightward_wk_gt_wd": 0
+  },
+  "regime_rates": {
+    "p_lt_100": {
+      "n": 24,
+      "rate": 0.0
+    },
+    "p_ge_1000": {
+      "n": 78329,
+      "rate": 0.0
+    }
+  },
+  "z_map": {
+    "a_observable": "diverge_rate (fraction of gaps with w_k != w_d)",
+    "a_value": 0.0,
+    "b_dynamic": "mean_rel_ln = mean(ln(q)/ln(p) - 1)",
+    "b_value": 3.408693659033114e-05,
+    "b_alt_log_gap": 0.0001620067426257593,
+    "c_constraint": "mean(min_step_ratio - 1) ~ mean(1/d_min)",
+    "c_value": 0.21046633960077066,
+    "effective_intensity": "mean((ln_span_ratio-1)/(min_step_ratio-1))",
+    "effective_intensity_value": 6.090558987949368e-05,
+    "max_intensity": 0.3219280948873631,
+    "formula": "effective_intensity = a is predicted near 0 when mean_intensity << 1",
+    "interpretation": "intensity << 1 means log stretch inside real gaps is far too weak to overcome a discrete +1 divisor-count step; argmin lock expected"
+  },
+  "falsifier": {
+    "claim": "w_d and w_k systematically diverge as gap_len or rel_ln grows within primes up to limit",
+    "disconfirm_if": "diverge_rate near 0 across all gap-length bins, OR no positive correlation of differ with gap_len/rel_ln, OR n_inversion_feasible=0",
+    "observed": {
+      "diverge_rate": 0.0,
+      "corr_gap": null,
+      "corr_rel_ln": null,
+      "n_inversion_feasible": 0
+    }
+  },
+  "differ_examples": [],
+  "elapsed_sec": 1.7228140830993652,
+  "hypothesis_verdict": "FALSIFIED",
+  "hypothesis_note": "No argmin divergence in range; theoretical inversion never feasible because max ln_span_ratio stays below min +1 d-step ratio.",
+  "surviving_insight_or_failure": {
+    "type": "explicit_failure",
+    "title": "Kappa and d Gap Winners stay locked on real prime gaps",
+    "summary": "No argmin divergence in range; theoretical inversion never feasible because max ln_span_ratio stays below min +1 d-step ratio.",
+    "mechanism": "kappa(n)=d(n)*ln(n)/e^2 can move the minimizer left of the d-winner only if an earlier higher-d composite satisfies d(m)/d(w_d) < ln(w_d)/ln(m). Inside actual prime gaps that log ratio never exceeds the discrete step 1+1/d_min, so the continuous CDL warp cannot reorder the PGS Gap Winner.",
+    "measurable_prediction": "For all primes p with p+gap <= limit, diverge_rate == 0 and max_ln_span_ratio < min_min_step_ratio.",
+    "what_would_revive_hypothesis": "Find a prime gap where ln(q-1)/ln(p+1) > 1 + 1/d_min for the gap's min d, or observe diverge_rate rising with gap_len bins."
+  }
+}
